@@ -33,7 +33,7 @@ const shell = (title, body, current) => `<!doctype html>
 <body>
 <header class="top"><div class="bar">
   <a class="brand" href="/"><img src="/brand/mark.svg" alt="" width="24" height="24"><span class="wordmark">CELLA</span></a>
-  <nav><a href="/docs/">Docs</a><a href="https://x.com/cellafinance" rel="noopener">X</a><a class="launch" href="/app/">Launch app</a></nav>
+  <nav><a href="/docs/">Docs</a><a href="https://x.com/cellafinance" rel="noopener">X</a><a class="launch" href="/app/">Enter Cella</a></nav>
 </div></header>
 <div class="layout">
 <aside class="side"><p class="side-title">Documentation</p>

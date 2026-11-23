@@ -148,3 +148,6 @@ h2 { font-size: clamp(38px, 5.2vw, 72px); line-height: 1.02; letter-spacing: -0.
   .hero .ca-copy { margin-left: auto; padding: 6px 12px; }
   .ca-list > div { grid-template-columns: 1fr; gap: 4px; }
 }
+
+.gh-link { display: inline-flex; align-items: center; gap: 9px; }
+.gh-link .gh { flex: none; }
