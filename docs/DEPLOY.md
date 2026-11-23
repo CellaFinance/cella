@@ -4,6 +4,8 @@ Untuk Robinhood Chain Testnet (chain ID 46630). Mainnet sengaja diblokir di skri
 
 Semua perintah dijalankan dari folder `~/Documents/cella`.
 
+> Status 23 November 2026: langkah 1 sampai 4 sudah dijalankan. Alamat kontrak ada di `deployments/46630.json` dan di `docs/RANCANGAN.md` bagian 23. Yang tersisa: hosting relayer dan situs (langkah 5 dan 6) dan uji dengan wallet sungguhan (langkah 7).
+
 ## Yang sudah disiapkan
 
 | Hal | Keadaan |

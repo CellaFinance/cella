@@ -379,3 +379,36 @@ Yang dibuat:
 Diuji: build statis disajikan sebagai file biasa dan dipakai di browser terhadap salinan lokal: setor, tarik lewat relayer, dan halaman auditor berjalan.
 
 Menunggu pemilik: ETH testnet untuk alamat deployer dan relayer, kunci auditor, tempat hosting situs dan relayer.
+
+## 23. Tahap 6: deploy ke testnet (23 November 2026)
+
+Robinhood Chain Testnet, chain ID 46630. Data lengkap di `deployments/46630.json`.
+
+| Kontrak | Alamat |
+|---|---|
+| CellaPool | `0x6b6f80e8f7ed4bcd76bbe0795ff9877bfc17ca3a` |
+| CellaRegistry | `0x626c794b714604bd10910575d6069bd8ae4123a2` |
+| Groth16Verifier (kunci uji) | `0x3590bc578090b7594a2a45ae79f08bc931d9aa38` |
+| Poseidon hasher | `0x478c4fa8739be12aaa38d51da03462d13e971f8f` |
+
+Pemilik kolam: alamat deployer `0x7B7A875eC79A581cE5e4E391efAcF9D903F288c4`. Kunci auditor: `~/.config/cella/auditor-testnet.json`. Batas: 0,1 ETH per setoran, 5 ETH total.
+
+Biaya deploy: 0,0000597 ETH pada 0,01 gwei, keenam pemeriksaan balik lolos.
+
+Uji alur lengkap di testnet asli (`node scripts/testnet-smoke.mjs --relayer URL`), dengan relayer berjalan di Mac ini:
+
+| Tindakan | Gas | Biaya | Pengirim transaksi |
+|---|---|---|---|
+| Setor 0,001 ETH | 1.753.515 | 0,0000175 ETH | Pengguna |
+| Bayar privat 0,0004 ETH | 1.322.329 | 0,0000132 ETH | Relayer |
+| Tarik 0,0001 ETH | 1.359.700 | 0,0000136 ETH | Relayer |
+
+Kutipan biaya relayer: 0,0000225 ETH per transaksi, di atas biaya gasnya.
+
+Yang terbukti di testnet: saldo privat kedua pengguna tepat; alamat luar menerima tepat 0,0001 ETH; wallet pembayar tidak membayar gas untuk pembayaran privat; klien baru yang hanya punya wallet memulihkan saldo; auditor membaca ketiga transaksi dan saldo cocok dengan 0,000855 ETH di kolam.
+
+Angka gas ini adalah yang ditagih chain, jadi sudah termasuk komponen data L1.
+
+Situs untuk testnet dibangun dan dibuka sebagai file statis: halaman app membaca aturan dan isi kolam langsung dari testnet.
+
+Belum: situs dan relayer belum dihosting untuk umum (relayer hanya hidup di Mac ini); wallet sungguhan di browser belum diuji; kode kontrak belum diverifikasi di penjelajah blok.
