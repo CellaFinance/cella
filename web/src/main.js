@@ -25,14 +25,15 @@ const TABS = {
   send: {
     button: "Send privately",
     to: "To (an address that has opened a Cella balance)",
-    hint: () => "The recipient sees the payment the next time they open Cella.",
-    seesPublic: ["That a Cella transaction happened", "The wallet that paid the gas"],
+    hint: (r) => r.relayFee ? `A relayer sends it for you, so your wallet stays off the transaction. Its fee, about ${eth(r.relayFee)} ETH, comes from your private balance.`
+      : "No relayer is reachable, so your own wallet will send this and its address will be visible.",
+    seesPublic: (r) => ["That a Cella transaction happened", r.relayFee ? "A relayer's address, not yours" : "Your wallet, as the sender of the transaction"],
     seesPrivate: ["Who received it", "How much", "What you have left"],
   },
   withdraw: {
     button: "Withdraw",
     to: "To (any address)",
-    hint: () => "Leave the address empty to withdraw to your own wallet.",
+    hint: (r) => "Leave the address empty to withdraw to your own wallet." + (r.relayFee ? ` Relayer fee: about ${eth(r.relayFee)} ETH from your private balance.` : ""),
     seesPublic: ["The receiving address", "The amount"],
     seesPrivate: ["Which deposit the money came from", "What you have left"],
   },
@@ -65,7 +66,7 @@ function renderTab() {
   $("toField").hidden = !t.to;
   if (t.to) $("toLabel").textContent = t.to;
   $("hint").textContent = state.rules ? t.hint(state.rules) : "";
-  list($("seesPublic"), t.seesPublic);
+  list($("seesPublic"), typeof t.seesPublic === "function" ? t.seesPublic(state.rules ?? {}) : t.seesPublic);
   list($("seesPrivate"), t.seesPrivate);
   setStatus("");
 }
@@ -75,16 +76,23 @@ async function loadRules() {
   const read = (functionName) => state.pub.readContract({ ...c, functionName });
   const [auditorKey, maxDeposit, poolCap, totalHeld, depositsPaused, owner, delay] = await Promise.all(
     ["auditorKey", "maxDeposit", "poolCap", "totalHeld", "depositsPaused", "owner", "AUDITOR_DELAY"].map(read));
-  state.rules = { auditorKey, maxDeposit, poolCap, totalHeld, depositsPaused, owner, delay };
+  let relayFee = null;
+  if (state.deployment.relayer) {
+    try { relayFee = BigInt((await (await fetch(state.deployment.relayer + "/info")).json()).fee); } catch { /* shown as unreachable */ }
+  }
+  state.rules = { auditorKey, maxDeposit, poolCap, totalHeld, depositsPaused, owner, delay, relayFee };
   $("rules").replaceChildren(
     row("Your money", "Only a proof made with your wallet's key can move it. No operator, owner or auditor can."),
     row("Auditor", `Can read every transfer; cannot move funds. Key ${short(toHex(auditorKey[0], { size: 32 }))}. Changing it takes ${Number(delay) / 86400} days and is announced on chain.`),
     row("Owner", `Can pause new deposits and change deposit limits. Cannot pause transfers or withdrawals, and cannot upgrade the contract. ${short(owner)}`),
+    row("Relayer", relayFee ? "Sends transfers and withdrawals for you and pays their gas. It cannot change them; it can only decline, and then you send them yourself." : "None reachable right now. Transfers and withdrawals go out from your own wallet."),
     row("Deposits", depositsPaused ? "Paused. Transfers and withdrawals still work." : `Open. Up to ${eth(maxDeposit)} ETH each, ${eth(poolCap)} ETH in total.`),
     row("Held in the pool", `${eth(totalHeld)} ETH`),
     row("Pool contract", state.deployment.pool, "mono"),
   );
   $("hint").textContent = TABS[state.tab].hint(state.rules);
+  const t = TABS[state.tab];
+  list($("seesPublic"), typeof t.seesPublic === "function" ? t.seesPublic(state.rules) : t.seesPublic);
 }
 
 async function render() {
@@ -147,9 +155,9 @@ async function unlock() {
   if (known && known.pubKey !== keys.pubKey) {
     throw new Error("This wallet gave a different signature than last time, so your earlier private balance cannot be opened with it.");
   }
-  const client = new CellaClient({ publicClient: state.pub, walletClient: state.wallet, account: state.account, deployment: d, keys,
+  const client = new CellaClient({ publicClient: state.pub, walletClient: state.wallet, account: state.account, deployment: d, keys, relayerUrl: d.relayer ?? null,
     prove: (signals) => snarkjs.groth16.fullProve(signals, "/prover/transact.wasm", "/prover/transact.zkey") });
-  client.onStatus = (s) => setStatus({ proving: "Making the proof on this device…", sending: "Sending to Robinhood Chain…", merging: "Combining your notes first…", done: "" }[s] ?? "");
+  client.onStatus = (s) => setStatus({ proving: "Making the proof on this device…", sending: "Sending to Robinhood Chain…", relaying: "Handing it to the relayer…", merging: "Combining your notes first…", done: "" }[s] ?? "");
 
   if (!known) { setUnlockText("Publishing your Cella address…"); await client.register(); }
   setUnlockText("Reading your notes from the chain…");

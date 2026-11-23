@@ -286,3 +286,39 @@ Belum ada di tahap 3:
 - Riwayat hanya berupa daftar catatan, belum riwayat "kirim ke siapa".
 - Sinkronisasi membaca semua event dari awal; untuk kolam yang ramai perlu pengindeks.
 - Kunci pembukti 19 MB diunduh penuh setiap kali; belum ada cache.
+
+## 19. Landing page (23 November 2026)
+
+`web/index.html` adalah halaman depan; app pindah ke `web/app/index.html` (alamat `/app/`). Satu gagasan gerak: menggulir membesarkan gerbang sampai pintu gadingnya memenuhi layar, lalu bagian berikutnya berlatar gading. Semua angka di halaman berasal dari pengukuran di dokumen ini; bila jumlah tes berubah, angka di halaman ikut diperbarui.
+
+## 20. Hasil tahap 4: relayer (23 November 2026)
+
+File: `relayer/relayer.mjs` (server), `relayer/main.mjs` (cara menjalankannya), `test/relayer.test.mjs`; perubahan di `src/client.mjs` dan `web/src/main.js`.
+
+Cara kerja:
+
+- `GET /info` memberi alamat relayer, chain, kolam, dan biaya saat ini. Biaya = harga gas x 1.500.000 gas x 150%.
+- `POST /relay` menerima bukti dan data luar, memeriksa bentuknya, menolak bila biaya di bawah 90% dari kutipan, bila penerima biaya bukan dirinya, atau bila itu setoran, lalu menyimulasikan panggilan. Hanya transaksi yang lolos simulasi yang dikirim.
+- Klien mengambil kutipan, mengikat alamat dan biaya relayer ke dalam bukti, dan mengambil biaya dari saldo privat. Setoran selalu dikirim langsung dari wallet.
+- Bila relayer tidak terjangkau atau melayani kolam lain, klien mengirim dari wallet sendiri.
+- Kunci gas relayer hanya lewat variabel lingkungan `CELLA_RELAYER_KEY`; tidak ada di repo.
+
+Tes: 58 dari 58 lolos (`npm test`). Tujuh tes relayer:
+
+- Transfer dan tarik lewat relayer: pengirim transaksi adalah relayer, saldo ETH wallet pengguna tidak berubah, penerima tarik mendapat jumlah penuh.
+- Gabung catatan lewat relayer membayar satu biaya per transaksi.
+- Ditolak tanpa biaya bagi relayer: biaya terlalu rendah, penerima biaya lain, setoran, penerima diubah, bukti diubah, bentuk salah, bukan JSON, terlalu besar, kiriman ulang.
+- Batas permintaan per alamat IP.
+- Tanpa relayer atau relayer untuk kolam lain: klien mengirim sendiri.
+
+Diuji di browser pada fork lokal: kirim 0,03 ETH dan tarik 0,01 ETH dikirim oleh relayer; saldo wallet tidak berkurang saat kirim dan bertambah tepat 0,01 ETH saat tarik.
+
+Biaya relayer di fork sekitar 0,0023 ETH karena harga gas anvil sekitar 1 gwei. Pada harga gas mainnet saat diukur (0,02 gwei) rumus yang sama memberi sekitar 0,000045 ETH.
+
+Batas yang diketahui:
+
+- Relayer melihat alamat IP pemanggil.
+- Satu relayer berarti satu pihak yang bisa menolak melayani; pengguna tetap bisa mengirim sendiri.
+- Pembatas permintaan hanya di memori dan per IP; di belakang proxy perlu membaca alamat asli.
+- Biaya memakai angka gas tetap, belum termasuk biaya data L1.
+- Belum ada skrip untuk menjalankan relayer sebagai layanan di server.

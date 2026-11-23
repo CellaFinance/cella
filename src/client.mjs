@@ -31,9 +31,11 @@ export class CellaClient {
    * deployment: { chainId, pool, registry, fromBlock }
    * keys:       from deriveKeys()
    * prove:      async (signals) => { proof, publicSignals }
+   * relayerUrl: optional; transfers and withdrawals then go through it, so this
+   *             wallet's address stays off them. Deposits are always sent directly.
    */
-  constructor({ publicClient, walletClient, account, deployment, keys, prove, logChunk = 20000n }) {
-    Object.assign(this, { publicClient, walletClient, account, deployment, keys, prove, logChunk });
+  constructor({ publicClient, walletClient, account, deployment, keys, prove, relayerUrl = null, logChunk = 20000n }) {
+    Object.assign(this, { publicClient, walletClient, account, deployment, keys, prove, relayerUrl, logChunk });
     this.address = typeof account === "string" ? account : account.address;
     this.tree = new C.Tree();
     this.notes = [];
@@ -102,17 +104,41 @@ export class CellaClient {
     return this._send(this.deployment.registry, registryAbi, "register", [this.keys.pubKey, this.keys.encKey]);
   }
 
-  async _transact({ inputs, outputs, extAmount = 0n, recipient = zeroAddress }) {
+  // ---------------- relayer ----------------
+
+  /** { address, fee } from the relayer, or null when none is set or it cannot be reached. */
+  async quote() {
+    if (!this.relayerUrl) return null;
+    try {
+      const r = await fetch(this.relayerUrl + "/info");
+      const info = await r.json();
+      if (!r.ok || info.chainId !== this.deployment.chainId || info.pool.toLowerCase() !== this.deployment.pool.toLowerCase()) return null;
+      return { address: info.address, fee: BigInt(info.fee) };
+    } catch {
+      return null;
+    }
+  }
+  async _relay(p, ext) {
+    const r = await fetch(this.relayerUrl + "/relay", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ proof: p, ext }, (_, v) => (typeof v === "bigint" ? v.toString() : v)) });
+    const out = await r.json();
+    if (!r.ok) throw new Error("The relayer refused: " + (out.error ?? r.status));
+    const receipt = await this.publicClient.waitForTransactionReceipt({ hash: out.hash });
+    if (receipt.status !== "success") throw new Error("The transaction was mined but failed.");
+    return receipt;
+  }
+
+  async _transact({ inputs, outputs, extAmount = 0n, recipient = zeroAddress, relay = null }) {
     const self = { pubKey: this.keys.pubKey, encKey: this.keys.encKey };
     const outs = [...outputs];
     while (outs.length < 2) outs.push({ amount: 0n, ...self });
     const notes = outs.map((o) => C.newNote(o.amount, o.pubKey));
     const [note0, note1] = await Promise.all(notes.map((n, i) => encryptNote(n, outs[i].encKey)));
-    const ext = { recipient, extAmount, relayer: zeroAddress, fee: 0n, note0, note1 };
+    const ext = { recipient, extAmount, relayer: relay?.address ?? zeroAddress, fee: relay?.fee ?? 0n, note0, note1 };
 
     const auditorPubKey = [...(await this.readPool("auditorKey"))];
     const built = C.buildTransaction({ tree: this.tree, privKey: this.keys.privKey, inputs, outputs: notes,
-      publicAmount: extAmount, extDataHash: hashExt(ext, this.deployment.pool, this.deployment.chainId), auditorPubKey });
+      publicAmount: extAmount - ext.fee, extDataHash: hashExt(ext, this.deployment.pool, this.deployment.chainId), auditorPubKey });
 
     this.onStatus("proving");
     const { proof } = await this.prove(built.signals);
@@ -120,27 +146,33 @@ export class CellaClient {
     const p = { ...proofToSolidity(proof), root: s.root, nullifiers: s.inputNullifier, commitments: s.outputCommitment,
       auditEphemeral: s.auditEphemeral, auditCipher: s.auditCipher };
 
-    this.onStatus("sending");
-    const receipt = await this._send(this.deployment.pool, poolAbi, "transact", [p, ext], extAmount > 0n ? extAmount : 0n);
+    this.onStatus(relay ? "relaying" : "sending");
+    const receipt = relay ? await this._relay(p, ext)
+      : await this._send(this.deployment.pool, poolAbi, "transact", [p, ext], extAmount > 0n ? extAmount : 0n);
     await this.sync();
     this.onStatus("done");
     return receipt;
   }
 
-  /** One or two notes covering `amount`; merges notes first when two are not enough. */
-  async _inputsFor(amount) {
+  /** One or two notes covering `amount` plus the relayer fee; merges notes first when two are not enough. */
+  async _inputsFor(amount, relay) {
+    const fee = relay?.fee ?? 0n;
     await this.sync();
-    if (this.balance < amount) throw new Error("Your private balance is too small for this.");
     for (;;) {
       const sorted = this.unspent.sort((a, b) => (a.note.amount < b.note.amount ? 1 : -1));
-      if (sorted[0].note.amount >= amount) return [sorted[0]];
-      if (sorted[0].note.amount + sorted[1].note.amount >= amount) return [sorted[0], sorted[1]];
+      if (this.balance < amount + fee) {
+        throw new Error(fee ? "Your private balance is too small for this amount plus the relayer fee." : "Your private balance is too small for this.");
+      }
+      if (sorted[0].note.amount >= amount + fee) return [sorted[0]];
+      if (sorted[0].note.amount + sorted[1].note.amount >= amount + fee) return [sorted[0], sorted[1]];
+      // Each merge is a transaction of its own and pays its own fee.
       this.onStatus("merging");
-      await this._transact({ inputs: [sorted[0], sorted[1]], outputs: [{ amount: sorted[0].note.amount + sorted[1].note.amount, pubKey: this.keys.pubKey, encKey: this.keys.encKey }] });
+      const merged = sorted[0].note.amount + sorted[1].note.amount - fee;
+      await this._transact({ inputs: [sorted[0], sorted[1]], outputs: [{ amount: merged, pubKey: this.keys.pubKey, encKey: this.keys.encKey }], relay });
     }
   }
-  _change(inputs, amount) {
-    const left = inputs.reduce((s, n) => s + n.note.amount, 0n) - amount;
+  _change(inputs, amount, relay) {
+    const left = inputs.reduce((s, n) => s + n.note.amount, 0n) - amount - (relay?.fee ?? 0n);
     return { amount: left, pubKey: this.keys.pubKey, encKey: this.keys.encKey };
   }
 
@@ -154,13 +186,15 @@ export class CellaClient {
     if (amount <= 0n) throw new Error("Enter an amount above zero.");
     const them = await this.lookup(to);
     if (!them) throw new Error("That address has not opened a Cella balance yet, so it cannot be paid privately.");
-    const inputs = await this._inputsFor(amount);
-    return this._transact({ inputs, outputs: [{ amount, ...them }, this._change(inputs, amount)] });
+    const relay = await this.quote();
+    const inputs = await this._inputsFor(amount, relay);
+    return this._transact({ inputs, outputs: [{ amount, ...them }, this._change(inputs, amount, relay)], relay });
   }
 
   async withdraw(recipient, amount) {
     if (amount <= 0n) throw new Error("Enter an amount above zero.");
-    const inputs = await this._inputsFor(amount);
-    return this._transact({ inputs, outputs: [this._change(inputs, amount)], extAmount: -amount, recipient });
+    const relay = await this.quote();
+    const inputs = await this._inputsFor(amount, relay);
+    return this._transact({ inputs, outputs: [this._change(inputs, amount, relay)], extAmount: -amount, recipient, relay });
   }
 }
