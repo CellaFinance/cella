@@ -4,7 +4,7 @@ Untuk Robinhood Chain Testnet (chain ID 46630). Mainnet sengaja diblokir di skri
 
 Semua perintah dijalankan dari folder `~/Documents/cella`.
 
-> Status 23 November 2026: langkah 1 sampai 4 sudah dijalankan. Alamat kontrak ada di `deployments/46630.json` dan di `docs/RANCANGAN.md` bagian 23. Yang tersisa: hosting relayer dan situs (langkah 5 dan 6) dan uji dengan wallet sungguhan (langkah 7).
+> Status 23 November 2026: langkah 1 sampai 4 sudah dijalankan. Alamat kontrak ada di `deployments/46630.json` dan di `docs/RANCANGAN.md` bagian 23. Uji dengan wallet sungguhan (Trust Wallet di Chrome) juga sudah. Yang tersisa: menerbitkan situs dan relayer ke Cloudflare Pages (langkah 5 dan 6).
 
 ## Yang sudah disiapkan
 
@@ -50,23 +50,39 @@ node scripts/deploy.mjs --network testnet --auditor-file ~/.config/cella/auditor
 
 Skrip berhenti sendiri bila: RPC menjawab untuk chain lain, alamat deployer punya kode di chain, saldo deployer nol, atau salah satu pemeriksaan sesudah deploy gagal. Hasilnya tersimpan di `deployments/46630.json`.
 
-## Langkah 5 — relayer
+## Langkah 5 dan 6 — situs dan relayer di Cloudflare Pages
 
-Relayer harus berjalan terus dan bisa dijangkau lewat HTTPS dari browser pengguna.
+Situs dan relayer diterbitkan bersama. Relayer berjalan sebagai fungsi di alamat situs itu sendiri (`/api/relayer`), jadi tidak ada server lain yang perlu hidup.
 
-```bash
-CELLA_CHAIN_ID=46630 CELLA_RPC=https://rpc.testnet.chain.robinhood.com CELLA_POOL=<alamat pool dari deployments/46630.json> CELLA_ALLOW_ORIGIN=https://<domain situs> node relayer/main.mjs
-```
-
-Ia mendengarkan di port 8580. Yang belum disiapkan: layanan agar relayer hidup lagi setelah mesin menyala ulang, dan alamat HTTPS publiknya (proxy atau tunnel).
-
-## Langkah 6 — situs
+Sekali saja, masuk ke Cloudflare (membuka browser):
 
 ```bash
-node scripts/build-web.mjs deployments/46630.json --relayer https://<alamat relayer>
+npx wrangler login
 ```
 
-Unggah isi folder `build/web` apa adanya ke hosting statis. Ukurannya sekitar 23 MB; 19 MB di antaranya kunci pembukti yang diunduh browser saat membuat bukti. Tanpa `--relayer`, transfer dan tarik dikirim dari wallet pengguna sendiri.
+Lalu terbitkan:
+
+```bash
+sh scripts/publish.sh
+```
+
+Skrip itu membangun situs untuk `deployments/46630.json`, membuat proyek Pages bernama `cella` bila belum ada, mengirim kunci relayer sebagai rahasia (tidak dicetak), dan mengunggah `build/web` beserta folder `functions/`. Alamat situsnya tercetak di akhir.
+
+Relayer membaca kolam, chain, dan RPC dari `deployment.json` milik situs, jadi satu-satunya pengaturan di Cloudflare adalah rahasia `CELLA_RELAYER_KEY`.
+
+Untuk mencoba di Mac tanpa menerbitkan:
+
+```bash
+npx wrangler pages dev build/web --port 8788 --binding "CELLA_RELAYER_KEY=$(cat ~/.config/cella/relayer.key)"
+```
+
+Relayer versi server biasa (`relayer/main.mjs`) tetap ada untuk dijalankan di mesin sendiri.
+
+Batas yang diketahui dari versi Pages:
+
+- Paket gratis membatasi waktu CPU per permintaan. Di emulator lokal batas itu tidak berlaku, jadi baru terukur setelah diterbitkan.
+- Tidak ada antrean bersama antar salinan fungsi; dua permintaan bersamaan bisa berebut nonce, lalu yang kalah mencoba lagi sampai tiga kali.
+- Pembatas permintaan per IP hanya perkiraan; untuk yang sungguhan pakai aturan rate limiting di dasbor Cloudflare.
 
 ## Langkah 7 — uji di testnet
 

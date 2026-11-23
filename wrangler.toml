@@ -1,0 +1,6 @@
+# Cloudflare Pages: the static site in build/web plus the relayer in functions/.
+# The relayer's gas wallet key is a secret set with:
+#   npx wrangler pages secret put CELLA_RELAYER_KEY --project-name cella
+name = "cella"
+pages_build_output_dir = "build/web"
+compatibility_date = "2026-10-01"

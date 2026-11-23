@@ -6,3 +6,5 @@ build/
 .DS_Store
 web/public/prover/
 web/public/deployment.json
+.wrangler/
+.dev.vars

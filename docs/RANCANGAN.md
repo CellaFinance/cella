@@ -422,3 +422,17 @@ Diperiksa dari sisi lain: wallet penerima menemukan catatan pembayarannya, dan a
 Perubahan app yang lahir dari uji ini: daftar pilihan wallet (EIP-6963, Trust Wallet di urutan pertama), dan pesan yang menyuruh setor dulu bila saldo privat kosong.
 
 Belum diuji: wallet lain (MetaMask, Bitget, Phantom), Trust Wallet di ponsel, dan browser selain Chrome.
+
+## 25. Hosting: Cloudflare Pages (23 November 2026)
+
+Keputusan pemilik: situs di Cloudflare Pages dengan alamat gratis, dan relayer di tempat yang sama sebagai fungsi Pages, bukan di ThinkPad. Alasan: tunnel ThinkPad hanya punya domain CLS/MIT, dan tanpa domain sendiri alamat gratisnya berganti tiap menyala ulang. Pola gratis yang sama direncanakan untuk mainnet.
+
+Perubahan:
+
+- `relayer/core.mjs`: aturan relayer tanpa kerangka server. Dipakai oleh `relayer/relayer.mjs` (server Node, dengan antrean) dan `relayer/pages.mjs` (fungsi Pages).
+- `functions/api/relayer/info.js` dan `relay.js`: titik masuk di `/api/relayer`.
+- `wrangler.toml`, `scripts/publish.sh`.
+
+Diuji: emulator Pages di Mac ini menyajikan situs dan fungsi relayer; alur penuh ke testnet asli lewat relayer versi Pages lolos (setor, bayar privat, tarik, pemulihan, auditor; saldo cocok dengan 0,002643 ETH di kolam). Tujuh tes relayer lama tetap lolos setelah pemisahan.
+
+Belum: penerbitan ke Cloudflare menunggu pemilik masuk dengan `npx wrangler login`. Batas CPU paket gratis baru bisa diukur setelah terbit.
