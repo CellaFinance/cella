@@ -322,3 +322,42 @@ Batas yang diketahui:
 - Pembatas permintaan hanya di memori dan per IP; di belakang proxy perlu membaca alamat asli.
 - Biaya memakai angka gas tetap, belum termasuk biaya data L1.
 - Belum ada skrip untuk menjalankan relayer sebagai layanan di server.
+
+## 21. Hasil tahap 5: alat auditor (23 November 2026)
+
+File: `auditor/ledger.mjs` (pustaka, jalan di Node dan browser), `auditor/auditor.mjs` (alat baris perintah), `web/auditor/` (halaman `/auditor/`), `test/auditor.test.mjs`.
+
+Yang dibaca auditor dari setiap transaksi: kunci Cella pengirim, dua catatan yang dibuat (jumlah dan pemilik), dan dari event publik: setoran, tarikan, dan biaya relayer. Dari situ alat ini:
+
+- menulis tiap transaksi sebagai satu kalimat (setor, bayar, tarik, gabung);
+- memasangkan kunci Cella dengan alamat 0x bila pemiliknya mendaftar di registry;
+- membangun ulang saldo setiap peserta;
+- mencocokkan jumlah semua saldo dengan ETH yang dipegang kolam.
+
+Perintah:
+
+| Perintah | Guna |
+|---|---|
+| `node auditor/auditor.mjs keygen` | Membuat kunci di komputer auditor; file rahasia berizin 600, tidak pernah ditimpa |
+| `node auditor/auditor.mjs pubkey --key FILE` | Mencetak kunci publik untuk diserahkan ke pemilik kolam |
+| `node auditor/auditor.mjs read --key FILE --rpc URL --pool ALAMAT` | Membaca kolam; keluaran teks, JSON, atau CSV |
+
+Tes: 66 dari 66 lolos (`npm test`). Delapan tes auditor:
+
+- File kunci privat, tidak ditimpa, dan kunci publiknya diterima kontrak.
+- Setor, bayar privat, dan tarik terbaca lengkap dengan alamat dan jumlah.
+- Saldo tiap peserta cocok dengan saldo yang dilihat klien masing-masing, dan jumlahnya sama dengan ETH di kolam.
+- Peserta yang tidak pernah mendaftarkan alamat tetap terlihat, lewat kuncinya.
+- Penggabungan catatan tercatat sebagai gabung dan tidak mengubah saldo.
+- Kunci lain tidak membuka satu pun catatan.
+- Setelah kunci auditor diganti, kunci lama hanya membaca masa lalu dan kunci baru hanya membaca sesudahnya.
+- Alat baris perintah mencetak buku besar dan CSV yang sama dengan pustakanya.
+
+Diuji di browser: halaman `/auditor/` dengan kunci uji membaca ketiga transaksi yang sebelumnya dibuat lewat app (setor, kirim lewat relayer, tarik lewat relayer) dan mencocokkan 0,06547 ETH dengan isi kolam. Kunci salah tidak membuka apa pun.
+
+Batas yang diketahui:
+
+- Auditor melihat kunci Cella, bukan identitas; alamat 0x hanya muncul bila pemiliknya mendaftar atau lewat setoran dan tarikan.
+- Setelah penggantian kunci, tidak ada satu kunci pun yang bisa mencocokkan seluruh riwayat sendirian; kedua pemegang kunci harus bekerja sama.
+- Alat membaca semua event dari awal setiap kali; kolam yang ramai perlu pengindeks.
+- Halaman web meminta rahasia diketik ke browser. Untuk pemakaian nyata, alat baris perintah di komputer yang tidak terhubung ke hal lain lebih aman.

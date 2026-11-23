@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cella — read as the auditor</title>
+  <link rel="icon" href="/brand/icon-64.png">
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <div id="banner" class="banner" hidden></div>
+
+  <header class="top">
+    <a class="brand" href="/" aria-label="Cella">
+      <img src="/brand/mark.svg" alt="" width="30" height="30">
+      <span class="wordmark">CELLA</span>
+    </a>
+    <div class="wallet"><a class="link plain" href="/app/">Open the app</a></div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="balances">
+        <p class="label">Auditor</p>
+        <h1 class="title">Read the pool<br>as the auditor.</h1>
+        <p class="muted">The auditor key opens the sealed copy that every Cella transaction must carry. It can read who paid whom and how much. It cannot move anything.</p>
+      </div>
+      <div class="actions">
+        <form id="form" novalidate>
+          <label class="field">
+            <span class="label">Auditor secret</span>
+            <input id="secret" type="password" autocomplete="off" spellcheck="false" placeholder="The number in your auditor key file">
+          </label>
+          <p class="muted small">The secret stays in this page. Only read requests go to the chain.</p>
+          <button class="primary" id="read" type="submit">Read the pool</button>
+          <button class="link" id="useTest" type="button" hidden>Use the test auditor key</button>
+          <p class="status" id="status" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+
+    <section class="block" id="resultBlock" hidden>
+      <h2 id="verdict"></h2>
+      <p class="muted" id="summary"></p>
+      <div class="rows" id="totals"></div>
+    </section>
+
+    <section class="block" id="holdersBlock" hidden>
+      <h2>Balances</h2>
+      <p class="muted">Rebuilt from the sealed copies alone. An address appears when the holder published one; otherwise the holder is shown by Cella key.</p>
+      <div class="rows" id="holders"></div>
+    </section>
+
+    <section class="block" id="recordsBlock" hidden>
+      <h2>Transactions</h2>
+      <div class="rows" id="records"></div>
+    </section>
+  </main>
+
+  <footer class="foot"><span>Cella is experimental software and has not been audited.</span></footer>
+  <script type="module" src="/src/auditor.js"></script>
+</body>
+</html>

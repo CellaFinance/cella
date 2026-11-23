@@ -26,11 +26,10 @@ copyFileSync(join(ROOT, "build/bench/g16.zkey"), join(pub, "prover/transact.zkey
 copyFileSync(join(ROOT, "brand/svg/cella-mark-ivory-transparent.svg"), join(pub, "brand/mark.svg"));
 copyFileSync(join(ROOT, "brand/png/cella-icon-onyx-64.png"), join(pub, "brand/icon-64.png"));
 copyFileSync(join(ROOT, "brand/font/CormorantGaramond-Medium.ttf"), join(pub, "brand/CormorantGaramond-Medium.ttf"));
-writeFileSync(join(pub, "deployment.json"), JSON.stringify({ ...deployment, rpc: net.url, relayer: `http://127.0.0.1:${RELAYER_PORT}`, chainName: "Robinhood Chain (local copy)", dev: true }, null, 2));
+writeFileSync(join(pub, "deployment.json"), JSON.stringify({ ...deployment, rpc: net.url, relayer: `http://127.0.0.1:${RELAYER_PORT}`, devAuditorSecret: auditor.secret.toString(), chainName: "Robinhood Chain (local copy)", dev: true }, null, 2));
 
 console.log(`chain ${net.forked ? "forked from mainnet" : "empty, same chain id"} at ${net.url}`);
 console.log("pool", deployment.pool, "registry", deployment.registry);
-console.log("auditor secret (test only):", auditor.secret.toString());
 console.log("relayer", relayer.address, "on port", RELAYER_PORT);
 console.log("ready");
 process.on("SIGINT", () => { net.proc.kill(); process.exit(0); });

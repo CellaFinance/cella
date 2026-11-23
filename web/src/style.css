@@ -104,3 +104,9 @@ button:disabled { opacity: 0.35; cursor: default; }
   .rows > div { grid-template-columns: 1fr; gap: 2px; }
   .tabs { gap: 22px; }
 }
+
+/* auditor page */
+.title { margin: 0 0 22px; font: 500 clamp(40px, 5.4vw, 68px)/1.02 var(--serif); letter-spacing: -0.01em; }
+.link.plain { text-decoration: none; color: inherit; }
+#useTest { margin-left: 22px; }
+.rows .muted { color: var(--muted); }

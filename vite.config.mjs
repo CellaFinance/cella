@@ -5,5 +5,5 @@ export default defineConfig({
   root: "web",
   server: { port: 5183, strictPort: true, fs: { allow: [".."] } },
   build: { outDir: "../build/web", emptyOutDir: true, target: "es2022",
-    rollupOptions: { input: { landing: "web/index.html", app: "web/app/index.html" } } },
+    rollupOptions: { input: { landing: "web/index.html", app: "web/app/index.html", auditor: "web/auditor/index.html" } } },
 });
