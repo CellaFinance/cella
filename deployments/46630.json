@@ -3,11 +3,11 @@
   "chainName": "Robinhood Chain Testnet",
   "rpc": "https://rpc.testnet.chain.robinhood.com",
   "explorer": "https://explorer.testnet.chain.robinhood.com",
-  "pool": "0x6b6f80e8f7ed4bcd76bbe0795ff9877bfc17ca3a",
-  "registry": "0x626c794b714604bd10910575d6069bd8ae4123a2",
-  "verifier": "0x3590bc578090b7594a2a45ae79f08bc931d9aa38",
-  "hasher": "0x478c4fa8739be12aaa38d51da03462d13e971f8f",
-  "fromBlock": 156843612,
+  "pool": "0x48285350eb8890015b3fd28a30b99dc6c6584f2d",
+  "registry": "0xc806318f49a41273f6f80e8451b4735080af4920",
+  "verifier": "0x90e9e448558eeda6263071317140222247af7979",
+  "hasher": "0xe431300949284e205fd3eb33d79ac685538e84ff",
+  "fromBlock": 156966881,
   "owner": "0x7B7A875eC79A581cE5e4E391efAcF9D903F288c4",
   "testKey": true
 }

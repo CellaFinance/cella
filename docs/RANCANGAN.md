@@ -489,8 +489,21 @@ Tes (`test/pool.test.mjs`, kini 19 tes): masuk-ulang saat penarikan dan saat kla
 - `extSquare` hanya muncul di satu batasan. Sengaja: sinyal itu ada hanya supaya `extDataHash` ikut dalam batasan sirkuit. Nilai `extDataHash` sendiri sudah terikat sebagai masukan publik.
 - `Num2Bits(levels)` di `MerkleRoot` dipakai tanpa versi ketat. Aman: lebarnya 24 bit, jauh di bawah 254 bit, sehingga tidak ada dua pemecahan bit untuk satu nilai. Versi ketat baru diperlukan mendekati lebar medan.
 
-### Keadaan testnet
+### Deploy ulang testnet (23 November 2026)
 
-Kontrak di testnet (`deployments/46630.json`) dan situs yang terbit masih versi **sebelum** perbaikan ini. Menyamakannya berarti deploy ulang: alamat kolam baru, dan saldo di kolam lama tidak ikut pindah (harus ditarik dulu dari kolam lama).
+Kontrak dengan perbaikan ini sudah di-deploy ke testnet dan situs diterbitkan ulang. Biaya deploy 0,00006 ETH.
+
+| Bagian | Alamat baru |
+|---|---|
+| CellaPool | `0x48285350eb8890015b3fd28a30b99dc6c6584f2d` |
+| CellaRegistry | `0xc806318f49a41273f6f80e8451b4735080af4920` |
+| Groth16Verifier | `0x90e9e448558eeda6263071317140222247af7979` |
+| Hasher | `0xe431300949284e205fd3eb33d79ac685538e84ff` |
+
+Data lengkap di `deployments/46630.json`; deploy pertama disimpan di `deployments/46630-v1.json`. Kolam lama (`0x6b6f…ca3a`) tetap ada di chain dan tetap bisa ditarik oleh pemilik catatannya, tetapi situs tidak lagi menunjuk ke sana. Registry juga baru, jadi alamat harus didaftarkan lagi (app melakukannya saat pertama dipakai).
+
+Diuji di kolam baru lewat alamat publik: setor 0,001, bayar privat 0,0004 lewat relayer, tarik 0,0001 langsung dari wallet, dan dua kali tarik 0,0001 lewat relayer. Penerima luar menerima tepat 0,0001 ETH tiap kali. Auditor: saldo 0,0006325 ETH cocok dengan `totalHeld` dan dengan saldo kontrak.
+
+Dua percobaan tarik lewat relayer gagal lebih dulu, dengan pesan "could not send" lalu "RPC Request failed" pada tahap simulasi. Transaksi yang sama berhasil saat dikirim langsung, dan relayer berhasil pada dua percobaan berikutnya, jadi kontrak tidak menolaknya. Sebabnya belum dipastikan; dugaan: RPC testnet menolak sementara permintaan dari relayer. Relayer saat ini tidak mencoba ulang saat RPC gagal.
 
 Catatan menjalankan tes: `npm test` menjalankan empat salinan chain sekaligus; diulang beberapa kali berturut-turut, RPC publik menolak dengan 429. Bila itu terjadi, tunggu semenit atau pakai `node --test --test-concurrency=1 test/`.
