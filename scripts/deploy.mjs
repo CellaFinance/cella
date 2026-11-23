@@ -2,9 +2,10 @@
 //
 //   node scripts/deploy.mjs --network testnet --auditor-file FILE [--dry-run]
 //
-//   --network       testnet (Robinhood Chain testnet, 46630). Mainnet is refused.
+//   --network       testnet (46630) or mainnet (4663). Mainnet also needs --unaudited-mainnet,
+//                   to say in words that real money goes into contracts no outside auditor has read.
 //   --auditor-file  file made by `node auditor/auditor.mjs keygen`; only its public half is used
-//   --key-file      deployer key file (default ~/.config/cella/deployer.key)
+//   --key-file      deployer key file (default ~/.config/cella/deployer.key, or deployer-mainnet.key)
 //   --owner         address that will own the pool (default: the deployer)
 //   --max-deposit   ETH per deposit (default 0.1)     --pool-cap  ETH in total (default 5)
 //   --dry-run       rehearse on a local copy of the network; nothing is sent to the real chain
@@ -21,7 +22,10 @@ import * as C from "../src/cella.mjs";
 import { ROOT, artifact } from "./lib/local.mjs";
 
 const NETWORKS = {
-  testnet: { chainId: 46630, name: "Robinhood Chain Testnet", rpc: "https://rpc.testnet.chain.robinhood.com", explorer: "https://explorer.testnet.chain.robinhood.com" },
+  testnet: { chainId: 46630, name: "Robinhood Chain Testnet", rpc: "https://rpc.testnet.chain.robinhood.com", explorer: "https://explorer.testnet.chain.robinhood.com",
+    verifier: "Groth16Verifier", key: "deployer" },
+  mainnet: { chainId: 4663, name: "Robinhood Chain", rpc: "https://rpc.mainnet.chain.robinhood.com", explorer: null,
+    verifier: "Groth16VerifierMainnet", key: "deployer-mainnet" },
 };
 const args = {};
 for (let i = 2; i < process.argv.length; i++) {
@@ -31,19 +35,21 @@ for (let i = 2; i < process.argv.length; i++) {
 const stop = (message) => { console.error("\nStopped: " + message); process.exit(1); };
 const step = (message) => console.log("  " + message);
 
-if (args.network === "mainnet") stop("mainnet deployment is blocked. It needs the public key ceremony and an independent audit first.");
 const network = NETWORKS[args.network];
-if (!network) stop("use --network testnet");
+if (!network) stop("use --network testnet or --network mainnet");
+const mainnet = args.network === "mainnet";
+if (mainnet && !args["dry-run"] && !args["unaudited-mainnet"]) stop("mainnet holds real money and these contracts have had no outside audit. Add --unaudited-mainnet to go ahead anyway.");
 if (!args["auditor-file"]) stop("use --auditor-file FILE (make one with: node auditor/auditor.mjs keygen)");
 const auditorKey = JSON.parse(readFileSync(args["auditor-file"], "utf8")).pubKey?.map(BigInt);
 if (!auditorKey || !C.onCurve(auditorKey)) stop("the auditor file has no valid public key");
 
-const keyFile = args["key-file"] ?? join(homedir(), ".config/cella/deployer.key");
-if (!existsSync(keyFile)) stop(`no deployer key at ${keyFile} (make one with: node scripts/new-key.mjs deployer)`);
+const keyFile = args["key-file"] ?? join(homedir(), `.config/cella/${network.key}.key`);
+if (!existsSync(keyFile)) stop(`no deployer key at ${keyFile} (make one with: node scripts/new-key.mjs ${network.key})`);
 const account = privateKeyToAccount(readFileSync(keyFile, "utf8").trim());
 const owner = getAddress(args.owner ?? account.address);
 const maxDeposit = parseEther(String(args["max-deposit"] ?? "0.1")), poolCap = parseEther(String(args["pool-cap"] ?? "5"));
-const usesTestKey = readFileSync(join(ROOT, "contracts/Groth16Verifier.sol"), "utf8").includes("LOCAL TEST KEY");
+const usesTestKey = readFileSync(join(ROOT, `contracts/${network.verifier}.sol`), "utf8").includes("LOCAL TEST KEY");
+if (mainnet && usesTestKey) stop("the mainnet verifier was made from the local test key. Run scripts/ceremony.mjs first.");
 
 let rpc = network.rpc, fork = null;
 if (args["dry-run"]) {
@@ -72,7 +78,7 @@ try {
 
   const gasPrice = await pub.getGasPrice();
   const balance = await pub.getBalance({ address: account.address });
-  if (balance === 0n) stop(`the deployer has no ETH on ${network.name}. Send test ETH to ${account.address} from the faucet and run this again.`);
+  if (balance === 0n) stop(`the deployer has no ETH on ${network.name}. Send ${mainnet ? "ETH" : "test ETH from the faucet"} to ${account.address} and run this again.`);
 
   let gasUsed = 0n, firstBlock = null;
   async function deploy(label, { abi, bytecode }, ctorArgs = []) {
@@ -86,7 +92,7 @@ try {
   }
   const hasherAbi = poseidonContract.generateABI(2);
   const hasher = await deploy("hasher", { abi: hasherAbi, bytecode: poseidonContract.createCode(2) });
-  const verifier = await deploy("verifier", artifact("Groth16Verifier", "Groth16Verifier"));
+  const verifier = await deploy("verifier", artifact(network.verifier, network.verifier));
   const pool = await deploy("pool", artifact("CellaPool", "CellaPool"), [verifier.address, hasher.address, 24, 100, auditorKey, maxDeposit, poolCap, owner]);
   const registry = await deploy("registry", artifact("CellaRegistry", "CellaRegistry"));
 
@@ -104,7 +110,7 @@ try {
 
   const out = { chainId: network.chainId, chainName: network.name, rpc: network.rpc, explorer: network.explorer,
     pool: pool.address, registry: registry.address, verifier: verifier.address, hasher: hasher.address,
-    fromBlock: Number(pool.block), owner, testKey: usesTestKey };
+    fromBlock: Number(pool.block), owner, testKey: usesTestKey, maxDeposit: String(args["max-deposit"] ?? "0.1"), poolCap: String(args["pool-cap"] ?? "5") };
   const file = args["dry-run"] ? join(ROOT, `build/dry-run-${network.chainId}.json`) : join(ROOT, `deployments/${network.chainId}.json`);
   mkdirSync(join(file, ".."), { recursive: true });
   writeFileSync(file, JSON.stringify(out, null, 2) + "\n");

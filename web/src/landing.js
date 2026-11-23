@@ -56,3 +56,21 @@ const seen = new IntersectionObserver((entries) => {
   for (const e of entries) if (e.isIntersecting) { e.target.classList.add("in"); seen.unobserve(e.target); }
 }, { rootMargin: "0px 0px -8% 0px" });
 for (const el of document.querySelectorAll(".reveal")) seen.observe(el);
+
+// The status section says where this copy of the site points: a test network or mainnet.
+fetch("/deployment.json", { cache: "no-store" }).then((r) => r.json()).then((d) => {
+  if (d.dev || d.testKey) return;
+  const rows = [
+    ["Circuit", "Written and tested", false],
+    ["Contracts", `Live on ${d.chainName}. Limits: ${d.maxDeposit ?? "0.1"} ETH per deposit, ${d.poolCap ?? "5"} ETH in total`, false],
+    ["Web app, relayer, auditor tool", "Live", false],
+    ["Proving key", "Public Hermez ceremony, then one contribution and a chain beacon. More contributors welcome", false],
+    ["Independent audit", "Not done yet", true],
+  ];
+  document.getElementById("statusLede").textContent = `Cella is live on ${d.chainName} as a limited beta. No outside firm has audited it yet, so deposits are capped. Use only amounts you could afford to lose.`;
+  document.getElementById("statusSteps").replaceChildren(...rows.map(([k, v, todo]) => {
+    const row = Object.assign(document.createElement("div"), { className: "in" + (todo ? " todo" : "") });
+    row.append(Object.assign(document.createElement("span"), { textContent: k }), Object.assign(document.createElement("span"), { textContent: v }));
+    return row;
+  }));
+}).catch(() => {});

@@ -1,13 +1,13 @@
 #!/bin/sh
 # Publishes the Cella site and its relayer to Cloudflare Pages.
-#   sh scripts/publish.sh [deployments/46630.json] [project-name]
+#   sh scripts/publish.sh [deployments/46630.json] [project-name] [relayer-key-name]
 # Needs a one-time `npx wrangler login`. The relayer key is read from
 # ~/.config/cella/relayer.key and sent to Cloudflare as a secret; it is never printed.
 set -e
 cd "$(dirname "$0")/.."
 DEPLOYMENT="${1:-deployments/46630.json}"
 PROJECT="${2:-cella}"
-KEY="$HOME/.config/cella/relayer.key"
+KEY="$HOME/.config/cella/${3:-relayer}.key"
 [ -f "$KEY" ] || { echo "no relayer key at $KEY"; exit 1; }
 
 npx wrangler whoami >/dev/null 2>&1 || { echo "Not signed in to Cloudflare. Run: npx wrangler login"; exit 1; }

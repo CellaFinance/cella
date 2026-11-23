@@ -284,11 +284,10 @@ async function start() {
     rpcUrls: { default: { http: [d.rpc] } }, blockExplorers: d.explorer ? { default: { name: "Explorer", url: d.explorer } } : undefined };
   state.deployment = d;
   state.pub = createPublicClient({ chain: d.chain, transport: http(d.rpc) });
-  if (d.dev || d.testKey) {
-    $("banner").hidden = false;
-    $("banner").textContent = d.dev ? "Local test copy of Robinhood Chain, with a test proving key. No real funds are involved."
-      : `${d.chainName}. Test network and test proving key: use test ETH only.`;
-  }
+  $("banner").hidden = false;
+  $("banner").textContent = d.dev ? "Local test copy of Robinhood Chain, with a test proving key. No real funds are involved."
+    : d.testKey ? `${d.chainName}. Test network and test proving key: use test ETH only.`
+    : `${d.chainName}. Beta, not yet audited by an outside firm. Deposit only what you could afford to lose.`;
 
   for (const b of document.querySelectorAll(".tabs button")) b.addEventListener("click", () => { state.tab = b.dataset.tab; renderTab(); });
   $("connect").addEventListener("click", showWalletList);
