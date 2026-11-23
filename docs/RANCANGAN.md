@@ -361,3 +361,21 @@ Batas yang diketahui:
 - Setelah penggantian kunci, tidak ada satu kunci pun yang bisa mencocokkan seluruh riwayat sendirian; kedua pemegang kunci harus bekerja sama.
 - Alat membaca semua event dari awal setiap kali; kolam yang ramai perlu pengindeks.
 - Halaman web meminta rahasia diketik ke browser. Untuk pemakaian nyata, alat baris perintah di komputer yang tidak terhubung ke hal lain lebih aman.
+
+## 22. Persiapan tahap 6: testnet (23 November 2026)
+
+Panduan langkah demi langkah ada di `docs/DEPLOY.md`.
+
+Terukur di testnet (chain ID 46630): satu blok tiap sekitar 0,22 detik, harga gas 0,01 gwei, kueri event selebar 5 juta blok diterima RPC publik.
+
+Yang dibuat:
+
+- `scripts/deploy.mjs`: deploy empat kontrak lalu enam pemeriksaan balik. Menolak mainnet, menolak alamat deployer yang punya kode di chain, menolak saldo nol. Gladi di salinan lokal testnet: 5,97 juta gas.
+- `scripts/new-key.mjs`: membuat kunci wallet di `~/.config/cella/`, izin 600, hanya alamat yang ditampilkan.
+- `scripts/build-web.mjs`: build situs statis ke `build/web` dengan data deployment yang dipilih; menolak deployment lokal dan membuang rahasia uji.
+- Klien membaca event dalam rentang blok lebar dan menyempit hanya bila RPC menolak.
+- Relayer membaca kuncinya dari file di luar repo.
+
+Diuji: build statis disajikan sebagai file biasa dan dipakai di browser terhadap salinan lokal: setor, tarik lewat relayer, dan halaman auditor berjalan.
+
+Menunggu pemilik: ETH testnet untuk alamat deployer dan relayer, kunci auditor, tempat hosting situs dan relayer.

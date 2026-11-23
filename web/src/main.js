@@ -135,12 +135,14 @@ async function connectInjected() {
 /** Local test copy only: a throwaway key made in this tab and funded by the dev chain. */
 async function connectDev() {
   let key = sessionStorage.getItem("cella-dev-key");
-  if (!key) { key = generatePrivateKey(); sessionStorage.setItem("cella-dev-key", key); }
+  const isNew = !key;
+  if (isNew) { key = generatePrivateKey(); sessionStorage.setItem("cella-dev-key", key); }
   const account = privateKeyToAccount(key);
   const d = state.deployment;
-  if ((await state.pub.getBalance({ address: account.address })) < parseEther("0.5")) {
-    await state.pub.request({ method: "anvil_setBalance", params: [account.address, toHex(parseEther("2"))] });
-  }
+  // Fund without reading first: a long-running fork can no longer look up an address it has never seen.
+  let low = isNew;
+  if (!low) { try { low = (await state.pub.getBalance({ address: account.address })) < parseEther("0.5"); } catch { low = true; } }
+  if (low) await state.pub.request({ method: "anvil_setBalance", params: [account.address, toHex(parseEther("2"))] });
   Object.assign(state, { wallet: createWalletClient({ chain: d.chain, transport: http(d.rpc) }), account, address: account.address, client: null });
 }
 
@@ -214,9 +216,10 @@ async function start() {
     rpcUrls: { default: { http: [d.rpc] } }, blockExplorers: d.explorer ? { default: { name: "Explorer", url: d.explorer } } : undefined };
   state.deployment = d;
   state.pub = createPublicClient({ chain: d.chain, transport: http(d.rpc) });
-  if (d.dev) {
+  if (d.dev || d.testKey) {
     $("banner").hidden = false;
-    $("banner").textContent = "Local test copy of Robinhood Chain, with a test proving key. No real funds are involved.";
+    $("banner").textContent = d.dev ? "Local test copy of Robinhood Chain, with a test proving key. No real funds are involved."
+      : `${d.chainName}. Test network and test proving key: use test ETH only.`;
   }
 
   for (const b of document.querySelectorAll(".tabs button")) b.addEventListener("click", () => { state.tab = b.dataset.tab; renderTab(); });

@@ -34,7 +34,7 @@ export class CellaClient {
    * relayerUrl: optional; transfers and withdrawals then go through it, so this
    *             wallet's address stays off them. Deposits are always sent directly.
    */
-  constructor({ publicClient, walletClient, account, deployment, keys, prove, relayerUrl = null, logChunk = 20000n }) {
+  constructor({ publicClient, walletClient, account, deployment, keys, prove, relayerUrl = null, logChunk = 2_000_000n }) {
     Object.assign(this, { publicClient, walletClient, account, deployment, keys, prove, relayerUrl, logChunk });
     this.address = typeof account === "string" ? account : account.address;
     this.tree = new C.Tree();
@@ -50,13 +50,24 @@ export class CellaClient {
   async sync() {
     // No cache: a sync right after our own transaction must see its block.
     const latest = await this.publicClient.getBlockNumber({ cacheTime: 0 });
-    for (let from = this.cursor; from <= latest; from += this.logChunk) {
-      const to = from + this.logChunk - 1n < latest ? from + this.logChunk - 1n : latest;
+    // Ask for a wide block range and narrow it only if the node objects. Blocks on
+    // this chain come several per second, so small fixed ranges would mean thousands of requests.
+    let span = this.logChunk;
+    for (let from = this.cursor; from <= latest;) {
+      const to = from + span - 1n < latest ? from + span - 1n : latest;
       const range = { address: this.deployment.pool, abi: poolAbi, fromBlock: from, toBlock: to };
-      const [added, nulled] = await Promise.all([
-        this.publicClient.getContractEvents({ ...range, eventName: "NewCommitment" }),
-        this.publicClient.getContractEvents({ ...range, eventName: "NewNullifier" }),
-      ]);
+      let added, nulled;
+      try {
+        [added, nulled] = await Promise.all([
+          this.publicClient.getContractEvents({ ...range, eventName: "NewCommitment" }),
+          this.publicClient.getContractEvents({ ...range, eventName: "NewNullifier" }),
+        ]);
+      } catch (err) {
+        if (span <= 2000n) throw err;
+        span /= 4n;
+        continue;
+      }
+      from = to + 1n;
       added.sort((x, y) => x.args.index - y.args.index);
       for (const log of added) {
         const { commitment, index, note } = log.args;
