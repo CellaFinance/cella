@@ -221,6 +221,14 @@ async function submit() {
   if (tab === "withdraw" && !to) to = state.address;
   if (tab !== "deposit" && !isAddress(to)) return setStatus("Enter a valid address.", true);
 
+  if (tab !== "deposit") {
+    if (client.balance === 0n) return setStatus("Your private balance is empty. Open the Deposit tab first to move ETH from your wallet into Cella.", true);
+    const fee = state.rules.relayFee ?? 0n;
+    if (amount + fee > client.balance) {
+      const most = client.balance > fee ? client.balance - fee : 0n;
+      return setStatus(`You can ${tab === "send" ? "send" : "withdraw"} at most ${eth(most)} ETH: your private balance is ${eth(client.balance)} ETH${fee ? ` and the relayer fee is about ${eth(fee)} ETH` : ""}.`, true);
+    }
+  }
   if (tab === "deposit") {
     if (amount > state.rules.maxDeposit) return setStatus(`The limit is ${eth(state.rules.maxDeposit)} ETH per deposit.`, true);
     await client.deposit(amount);
