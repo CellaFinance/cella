@@ -1,0 +1,15 @@
+{
+  "chainId": 4663,
+  "chainName": "Robinhood Chain",
+  "rpc": "https://rpc.mainnet.chain.robinhood.com",
+  "explorer": null,
+  "pool": "0x6bfd78e6c3761b8a8e5ea216b39e64c82b9c76cd",
+  "registry": "0x8d6cde1ff699de46543adc404ccdeb8a3b5b243d",
+  "verifier": "0x6e654fb9f3af625c553ffcbd0f8f0963848c2090",
+  "hasher": "0x85b67b781dee8792694a5038668a35ebb12c61fb",
+  "fromBlock": 121391244,
+  "owner": "0xb7f1C2882BE91587CdDE97474297a992cb298478",
+  "testKey": false,
+  "maxDeposit": "0.1",
+  "poolCap": "5"
+}

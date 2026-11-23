@@ -524,3 +524,28 @@ Catatan menjalankan tes: `npm test` menjalankan empat salinan chain sekaligus; d
 Tes baru: RPC yang tersendat (dua simulasi gagal, lalu satu pengiriman yang jawabannya hilang) tetap menghasilkan tepat satu transaksi; RPC mati menghasilkan 503 tanpa transaksi; penolakan kolam tetap 400; penarikan ke penerima yang menolak terbaca oleh klien dan bisa diambil. Jumlah tes kini 69.
 
 Belum diuji: baris klaim di app belum pernah terlihat dengan saldo tertahan sungguhan di browser, karena wallet biasa tidak pernah punya saldo tertahan. Yang diperiksa hanya bahwa halaman terbit tanpa galat dan logikanya lolos tes klien.
+
+## 29. Mainnet (23 November 2026)
+
+Cella di-deploy ke Robinhood Chain mainnet (4663) sebagai beta yang belum diaudit pihak luar.
+
+**Keputusan pemilik.** Batas 0,1 ETH per setoran dan 5 ETH total di kolam. Pemilik kontrak (yang bisa menjeda setoran dan mengubah batas) adalah wallet pemilik `0xb7f1…8478`, bukan dompet deployer.
+
+**Kunci pembukti (`scripts/ceremony.mjs`, catatan di `ceremony/mainnet.json`).** Fase 1 memakai upacara publik Hermez; berkasnya dicek terhadap checksum yang dipublikasikan. Fase 2 terdiri dari satu kontribusi dengan angka acak dari mesin ini (tidak disimpan) dan beacon berupa hash blok Robinhood Chain yang ditentukan sesudah kontribusi tertulis. Kelemahannya: hanya ada satu kontributor fase 2, jadi kunci ini aman selama angka acak itu memang tidak disimpan, dan itu tidak bisa dibuktikan ke orang lain. Kontributor tambahan memerlukan kunci baru, verifier baru, dan kolam baru.
+
+**Alamat.**
+
+| Kontrak | Alamat |
+| --- | --- |
+| CellaPool | `0x6bfd78e6c3761b8a8e5ea216b39e64c82b9c76cd` |
+| Registry | `0x8d6cde1ff699de46543adc404ccdeb8a3b5b243d` |
+| Verifier (kunci mainnet) | `0x6e654fb9f3af625c553ffcbd0f8f0963848c2090` |
+| Hasher | `0x85b67b781dee8792694a5038668a35ebb12c61fb` |
+
+Data lengkap di `deployments/4663.json`. Biaya deploy 0,000122 ETH. Dompet deployer, relayer, dan kunci auditor khusus mainnet, terpisah dari testnet (`~/.config/cella/*-mainnet.*`).
+
+**Situs.** https://cella-mainnet.pages.dev (proyek Pages `cella-mainnet`, relayer di `/api/relayer`). Testnet tetap di https://cella-br5.pages.dev. Perintah terbit: `sh scripts/publish.sh deployments/4663.json cella-mainnet relayer-mainnet`.
+
+**Uji di mainnet** (`node scripts/testnet-smoke.mjs --deployment deployments/4663.json --relayer https://cella-mainnet.pages.dev/api/relayer`): setor 0,0005, bayar privat 0,0002 lewat relayer, tarik 0,00005 lewat relayer ke alamat luar. Semua pemeriksaan lolos; auditor membaca ketiga catatan dan saldonya cocok dengan 0,000359 ETH di kolam. Biaya relayer sekitar 0,000045 ETH per transaksi, gas nyata sekitar 0,000027.
+
+**Belum dilakukan.** Audit luar; uji lewat browser dengan wallet sungguhan di mainnet (yang diuji adalah klien yang sama lewat skrip); pembatasan laju di Cloudflare; domain sendiri; explorer mainnet belum diketahui sehingga tautan transaksi tidak ditampilkan. Dompet relayer berisi sekitar 0,0005 ETH, cukup untuk belasan transaksi lebih dari yang dibayar biayanya; biaya yang dipungut masuk kembali ke dompet itu.
