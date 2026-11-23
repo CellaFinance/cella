@@ -412,3 +412,13 @@ Angka gas ini adalah yang ditagih chain, jadi sudah termasuk komponen data L1.
 Situs untuk testnet dibangun dan dibuka sebagai file statis: halaman app membaca aturan dan isi kolam langsung dari testnet.
 
 Belum: situs dan relayer belum dihosting untuk umum (relayer hanya hidup di Mac ini); wallet sungguhan di browser belum diuji; kode kontrak belum diverifikasi di penjelajah blok.
+
+## 24. Uji dengan wallet sungguhan di testnet (23 November 2026)
+
+Pemilik menjalankan app testnet di Chrome dengan ekstensi Trust Wallet (alamat `0xb7f1…8478`): menyambung, pindah jaringan ke 46630, tanda tangan kunci, pendaftaran alamat, dua setoran 0,0005 ETH, satu pembayaran privat lewat relayer, dan satu penarikan lewat relayer. Semuanya berhasil.
+
+Diperiksa dari sisi lain: wallet penerima menemukan catatan pembayarannya, dan auditor membaca keempat transaksi itu; jumlah saldo ketiga peserta (0,001788 ETH) cocok dengan isi kolam.
+
+Perubahan app yang lahir dari uji ini: daftar pilihan wallet (EIP-6963, Trust Wallet di urutan pertama), dan pesan yang menyuruh setor dulu bila saldo privat kosong.
+
+Belum diuji: wallet lain (MetaMask, Bitget, Phantom), Trust Wallet di ponsel, dan browser selain Chrome.
