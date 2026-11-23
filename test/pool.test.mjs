@@ -33,6 +33,7 @@ const VERIFIER = artifact("Groth16Verifier", "Groth16Verifier");
 const ACCEPT_ALL = artifact("Helpers", "AcceptAllVerifier");
 const REENTER = artifact("Helpers", "Reenter");
 const FORCE = artifact("Helpers", "ForceSend");
+const REFUSER = artifact("Helpers", "Refuser");
 
 const E = (s) => parseEther(s);
 const MAX_DEPOSIT = E("0.1"), POOL_CAP = E("5");
@@ -318,21 +319,43 @@ test("refused: a proof made for another pool or another chain", async () => {
   await send(a, tx, aliceAddr, E("0.01"));
 });
 
-test("re-entering during a withdrawal is refused, and pays once", async () => {
+test("re-entering is refused, and pays once: during a withdrawal the payee has too little gas, during a claim it is locked out", async () => {
   const thief = await deploy(REENTER);
   const first = await makeTx(main, { privKey: alice.sk, inputs: [aliceChange], outputs: [], ext: { recipient: thief, extAmount: -E("0.018") } });
   const second = await makeTx(main, { privKey: alice.sk, inputs: [spare], outputs: [], ext: { recipient: thief, extAmount: -E("0.05") } });
   const data = encodeFunctionData({ abi: POOL.abi, functionName: "transact", args: [second.proof, second.ext] });
-  await pub.waitForTransactionReceipt({ hash: await call(thief, REENTER.abi, "arm", [main.address, data], stranger) });
-
-  await send(main, first, aliceAddr);
+  const done = async (hash) => assert.equal((await pub.waitForTransactionReceipt({ hash })).status, "success");
   const r = (fn) => pub.readContract({ address: thief, abi: REENTER.abi, functionName: fn });
+  await done(await call(thief, REENTER.abi, "arm", [main.address, data], stranger));
+
+  // The withdrawal itself goes through, but the payee's attempt runs out of its small
+  // gas allowance, so the ETH is held for it instead of delivered.
+  const held = await read(main, "totalHeld");
+  await send(main, first, aliceAddr);
+  assert.equal(await r("tried"), false);
+  assert.equal(await pub.getBalance({ address: thief }), 0n);
+  assert.equal(await read(main, "owed", [thief]), E("0.018"));
+  assert.equal(await read(main, "totalHeld"), held - E("0.018"));
+
+  // Claiming hands over all the gas: now the re-entry really runs, and is refused.
+  await done(await call(thief, REENTER.abi, "collect", [], stranger));
   assert.equal(await r("tried"), true);
   assert.equal(await r("innerCallSucceeded"), false);
   assert.equal(await pub.getBalance({ address: thief }), E("0.018"));
+  assert.equal(await read(main, "owed", [thief]), 0n);
 
+  // Same again with claim() as the inner call: a held payment cannot be collected twice.
+  const claimData = encodeFunctionData({ abi: POOL.abi, functionName: "claim" });
+  await done(await call(thief, REENTER.abi, "arm", [main.address, claimData], stranger));
   await send(main, second, aliceAddr);
+  // (arming again reset `tried`; the small allowance is enough to try claim(), which is locked)
+  const got = await pub.getBalance({ address: thief });
+  const owedNow = await read(main, "owed", [thief]);
+  assert.equal(got + owedNow, E("0.068"));
+  if (owedNow > 0n) await done(await call(thief, REENTER.abi, "collect", [], stranger));
+  assert.equal(await r("innerCallSucceeded"), false);
   assert.equal(await pub.getBalance({ address: thief }), E("0.068"));
+  assert.equal(await read(main, "owed", [thief]), 0n);
 });
 
 test("auditor key: bad points refused, 7-day delay enforced, old key stops working after the change", async () => {
@@ -415,4 +438,59 @@ test("limits checked before any proof: full tree, repeated nullifier, amounts ou
   // Even with a verifier that accepts anything, more than was deposited cannot leave.
   const drain = await withRoot(p); drain.ext.extAmount = -1n; drain.ext.recipient = stranger;
   await refused(write(p, drain, stranger));
+});
+
+test("a payee that refuses ETH cannot make the transaction fail: the amount waits for it", async () => {
+  const p = await deployPool();
+  const done = async (hash) => { const rc = await pub.waitForTransactionReceipt({ hash }); assert.equal(rc.status, "success"); return rc; };
+  const refuser = await deploy(REFUSER);
+  const owedTo = (who) => read(p, "owed", [who]);
+  // The pool's errors pass straight through the helper, so they are decoded with both ABIs.
+  const both = [...REFUSER.abi, ...POOL.abi.filter((x) => x.type === "error")];
+  const collect = () => call(refuser, both, "collect", [p.address], stranger);
+
+  // A withdrawal through a relayer to a recipient that reverts on receiving ETH.
+  let note = await deposit(p, alice, E("0.1"));
+  const fee = E("0.001");
+  const out = await makeTx(p, { privKey: alice.sk, inputs: [note], outputs: [C.newNote(E("0.069"), alice.pk)],
+    ext: { recipient: refuser, extAmount: -E("0.03"), relayer, fee } });
+  const before_ = await pub.getBalance({ address: relayer });
+  const { rc, notes } = await send(p, out, relayer);
+  [note] = notes;
+  // The relayer is still paid, so refusing costs the relayer nothing.
+  assert.equal(await pub.getBalance({ address: relayer }), before_ + fee - rc.gasUsed * rc.effectiveGasPrice);
+  const [heldLog] = parseEventLogs({ abi: POOL.abi, logs: rc.logs, eventName: "PaymentHeld" });
+  assert.equal(getAddress(heldLog.args.to), getAddress(refuser));
+  assert.equal(heldLog.args.amount, E("0.03"));
+  assert.equal(await owedTo(refuser), E("0.03"));
+  assert.equal(await pub.getBalance({ address: refuser }), 0n);
+  // The notes no longer cover that ETH, but it is still in the contract.
+  assert.equal(await read(p, "totalHeld"), E("0.069"));
+  assert.equal(await pub.getBalance({ address: p.address }), E("0.099"));
+
+  // Only the payee can collect, only once it accepts, and only once.
+  await refused(call(p.address, POOL.abi, "claim", [], stranger), "NothingOwed");
+  await refused(collect(), "TransferFailed");
+  assert.equal(await owedTo(refuser), E("0.03"));
+  await done(await call(refuser, REFUSER.abi, "setAccepting", [true], stranger));
+  const claimRc = await done(await collect());
+  const [claimed] = parseEventLogs({ abi: POOL.abi, logs: claimRc.logs, eventName: "Claimed" });
+  assert.equal(claimed.args.amount, E("0.03"));
+  assert.equal(await pub.getBalance({ address: refuser }), E("0.03"));
+  assert.equal(await owedTo(refuser), 0n);
+  await refused(collect(), "NothingOwed");
+  assert.equal(await pub.getBalance({ address: p.address }), E("0.069"));
+
+  // A fee payee that refuses is treated the same way, and held amounts add up.
+  await done(await call(refuser, REFUSER.abi, "setAccepting", [false], stranger));
+  for (const left of ["0.067", "0.065"]) {
+    const tx = await makeTx(p, { privKey: alice.sk, inputs: [note], outputs: [C.newNote(E(left), alice.pk)], ext: { relayer: refuser, fee: E("0.002") } });
+    [note] = (await send(p, tx, stranger)).notes;
+  }
+  assert.equal(await owedTo(refuser), E("0.004"));
+  assert.equal(await read(p, "totalHeld"), E("0.065"));
+  assert.equal(await pub.getBalance({ address: p.address }), E("0.069"));
+  await done(await call(refuser, REFUSER.abi, "setAccepting", [true], stranger));
+  await done(await collect());
+  assert.equal(await pub.getBalance({ address: p.address }), await read(p, "totalHeld"));
 });

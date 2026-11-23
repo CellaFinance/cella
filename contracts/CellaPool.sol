@@ -23,6 +23,8 @@ contract CellaPool {
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
     uint256 public constant AUDITOR_DELAY = 7 days;
     uint256 internal constant AMOUNT_LIMIT = 1 << 96;
+    /// Gas handed to a payee. Enough for a wallet contract to accept ETH, too little to do harm.
+    uint256 internal constant PAYOUT_GAS = 50_000;
     uint256 internal constant BABYJUB_A = 168700;
     uint256 internal constant BABYJUB_D = 168696;
 
@@ -65,6 +67,9 @@ contract CellaPool {
     uint256[2] internal _pendingAuditorKey;
     uint256 public pendingAuditorEta;
 
+    /// ETH a payee could not accept when it was sent; they collect it with claim().
+    mapping(address => uint256) public owed;
+
     mapping(uint256 => bool) public nullifierSpent;
     mapping(uint256 => uint256) public roots;
     mapping(uint256 => uint256) internal _zeros;
@@ -80,6 +85,8 @@ contract CellaPool {
     event Deposit(address indexed from, uint256 amount);
     event Withdrawal(address indexed to, uint256 amount);
     event RelayerPaid(address indexed relayer, uint256 fee);
+    event PaymentHeld(address indexed to, uint256 amount);
+    event Claimed(address indexed to, uint256 amount);
     event AuditorProposed(uint256 x, uint256 y, uint256 eta);
     event AuditorChanged(uint256 x, uint256 y);
     event DepositsPaused(bool paused);
@@ -100,6 +107,7 @@ contract CellaPool {
     error PoolCapReached();
     error NoRecipient();
     error TransferFailed();
+    error NothingOwed();
     error TreeFull();
     error BadAuditorKey();
     error NothingPending();
@@ -189,19 +197,36 @@ contract CellaPool {
         emit NewCommitment(p.commitments[1], index + 1, e.note1);
         emit AuditRecord(p.nullifiers[0], p.auditEphemeral, p.auditCipher, _auditorKey);
 
+        // Books first, payments last. A payee that refuses its ETH cannot undo the
+        // transaction: the amount waits for it in `owed`. Without this, a recipient
+        // contract could make a relayer's transaction fail after the relayer had
+        // checked it, costing the relayer gas for nothing, again and again.
+        uint256 withdrawn = 0;
         if (e.extAmount < 0) {
             if (e.recipient == address(0)) revert NoRecipient();
-            uint256 amount = uint256(-e.extAmount);
-            totalHeld -= amount;
-            _send(e.recipient, amount);
-            emit Withdrawal(e.recipient, amount);
+            withdrawn = uint256(-e.extAmount);
+        }
+        if (e.fee > 0 && e.relayer == address(0)) revert NoRecipient();
+        totalHeld -= withdrawn + e.fee;
+
+        if (withdrawn > 0) {
+            _pay(e.recipient, withdrawn);
+            emit Withdrawal(e.recipient, withdrawn);
         }
         if (e.fee > 0) {
-            if (e.relayer == address(0)) revert NoRecipient();
-            totalHeld -= e.fee;
-            _send(e.relayer, e.fee);
+            _pay(e.relayer, e.fee);
             emit RelayerPaid(e.relayer, e.fee);
         }
+    }
+
+    /// Collects ETH that could not be delivered earlier.
+    function claim() external nonReentrant {
+        uint256 amount = owed[msg.sender];
+        if (amount == 0) revert NothingOwed();
+        owed[msg.sender] = 0;
+        (bool ok,) = msg.sender.call{value: amount}("");
+        if (!ok) revert TransferFailed();
+        emit Claimed(msg.sender, amount);
     }
 
     /// The hash every proof commits to. Includes this chain and this contract,
@@ -234,9 +259,12 @@ contract CellaPool {
         for (uint256 i = 0; i < 5; i++) s[11 + i] = p.auditCipher[i];
     }
 
-    function _send(address to, uint256 amount) internal {
-        (bool ok,) = to.call{value: amount}("");
-        if (!ok) revert TransferFailed();
+    function _pay(address to, uint256 amount) internal {
+        (bool ok,) = to.call{value: amount, gas: PAYOUT_GAS}("");
+        if (!ok) {
+            owed[to] += amount;
+            emit PaymentHeld(to, amount);
+        }
     }
 
     // ------------------------------------------------------------------

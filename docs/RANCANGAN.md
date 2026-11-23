@@ -452,3 +452,45 @@ Menerbitkan ulang setelah ada perubahan: `NODE_OPTIONS=--dns-result-order=ipv4fi
 Header keamanan (ditambahkan sesudahnya, `scripts/lib/headers.mjs`): kebijakan isi yang hanya mengizinkan skrip milik situs sendiri, WebAssembly untuk pembukti, dan sambungan ke RPC chain; ditambah larangan dibingkai, tanpa perujuk, dan tanpa akses kamera, mikrofon, lokasi. Diuji di emulator dengan chain lokal (setor dan tarik lewat relayer, nol pelanggaran), lalu diperiksa di alamat publik lewat Chrome: efek gulir, halaman app, logo wallet, dan pembacaan kolam berjalan tanpa pelanggaran.
 
 Belum: aturan rate limiting di dasbor Cloudflare belum dibuat; domain sendiri belum ada.
+
+## 27. Analisis statis: slither dan circomspect (23 November 2026)
+
+Alat dipasang di `.tools/` (tidak ikut repo): slither 0.11.6 untuk kontrak, circomspect untuk sirkuit. Ini pemeriksaan otomatis, bukan pengganti audit luar.
+
+### Kontrak (slither): 8 catatan
+
+| Catatan | Putusan |
+|---|---|
+| Pembukuan `totalHeld` diubah setelah ETH dikirim | **Diperbaiki.** Pembukuan sekarang selesai sebelum pembayaran apa pun. Sebelumnya pun tidak bisa dieksploitasi karena ada kunci masuk-ulang, tetapi urutan yang benar tidak bergantung pada kunci itu. |
+| Mengirim ETH ke alamat yang ditentukan pemanggil | Sengaja: itulah penarikan. Alamat dan jumlah terikat oleh bukti. |
+| Panggilan keluar di dalam perulangan (hasher) | Sengaja: hasher adalah kontrak tetap yang ditentukan saat deploy. |
+| Perbandingan persis (`msg.value != amount`, `_lock != 1`) | Sengaja. |
+| Memakai waktu blok (jeda kunci auditor 7 hari) | Aman: selisih beberapa detik tidak berarti untuk jeda 7 hari. |
+| `transferOwnership` tanpa cek alamat nol | Aman: pemindahan dua langkah, alamat nol tidak bisa menerima. |
+| Sisanya (penamaan, versi) | Bukan soal keamanan. |
+
+### Celah yang ditemukan saat menelaah catatan pertama
+
+Penarikan lewat relayer bisa dibuat gagal oleh penerimanya. Penerima berupa kontrak yang menolak ETH membuat seluruh transaksi batal, padahal relayer sudah membayar gas. Diulang terus, ini menguras dana gas relayer tanpa biaya berarti bagi penyerang. Simulasi di relayer tidak cukup, karena kontrak penerima bisa menerima saat disimulasikan lalu menolak saat dikirim.
+
+Perbaikan di `CellaPool.sol`:
+
+- Pembayaran memakai `_pay`: ETH dikirim dengan jatah gas 50.000. Bila penerima menolak atau kehabisan gas, transaksi **tetap berhasil** dan jumlahnya dicatat di `owed[penerima]` (event `PaymentHeld`).
+- Penerima mengambilnya sendiri dengan `claim()` (event `Claimed`). Hanya penerima yang bisa mengambil, dan hanya sekali.
+- Biaya relayer memakai jalur yang sama.
+- ETH yang ditahan sudah keluar dari `totalHeld`, jadi tidak mengurangi batas kolam dan tidak bisa dibelanjakan catatan mana pun. Saldo kontrak = `totalHeld` + semua `owed` (+ ETH paksaan, bila ada).
+
+Akibat yang perlu diketahui: wallet kontrak yang butuh lebih dari 50.000 gas untuk menerima ETH tidak langsung menerima penarikannya; ia harus memanggil `claim()`. App belum punya tombol untuk itu.
+
+Tes (`test/pool.test.mjs`, kini 19 tes): masuk-ulang saat penarikan dan saat klaim ditolak dan hanya dibayar sekali; penerima yang menolak tidak membatalkan transaksi dan relayer tetap dibayar; klaim oleh orang lain ditolak; klaim saat masih menolak gagal tanpa menghapus hak; penerima biaya yang menolak diperlakukan sama.
+
+### Sirkuit (circomspect): 2 peringatan, keduanya bukan celah
+
+- `extSquare` hanya muncul di satu batasan. Sengaja: sinyal itu ada hanya supaya `extDataHash` ikut dalam batasan sirkuit. Nilai `extDataHash` sendiri sudah terikat sebagai masukan publik.
+- `Num2Bits(levels)` di `MerkleRoot` dipakai tanpa versi ketat. Aman: lebarnya 24 bit, jauh di bawah 254 bit, sehingga tidak ada dua pemecahan bit untuk satu nilai. Versi ketat baru diperlukan mendekati lebar medan.
+
+### Keadaan testnet
+
+Kontrak di testnet (`deployments/46630.json`) dan situs yang terbit masih versi **sebelum** perbaikan ini. Menyamakannya berarti deploy ulang: alamat kolam baru, dan saldo di kolam lama tidak ikut pindah (harus ditarik dulu dari kolam lama).
+
+Catatan menjalankan tes: `npm test` menjalankan empat salinan chain sekaligus; diulang beberapa kali berturut-turut, RPC publik menolak dengan 429. Bila itu terjadi, tunggu semenit atau pakai `node --test --test-concurrency=1 test/`.

@@ -26,6 +26,12 @@ contract Reenter {
         innerCallSucceeded = false;
     }
 
+    /// Collects a held payment. claim() pays with all the gas left, so the receive below can run.
+    function collect() external {
+        (bool ok,) = pool.call(abi.encodeWithSignature("claim()"));
+        require(ok, "claim failed");
+    }
+
     receive() external payable {
         if (!tried && pool != address(0)) {
             tried = true;
@@ -39,5 +45,27 @@ contract Reenter {
 contract ForceSend {
     constructor(address payable to) payable {
         selfdestruct(to);
+    }
+}
+
+/// Test only. Refuses ETH until told to accept it, and can collect what it is owed.
+contract Refuser {
+    bool public accepting;
+
+    function setAccepting(bool on) external {
+        accepting = on;
+    }
+
+    function collect(address pool) external {
+        (bool ok, bytes memory why) = pool.call(abi.encodeWithSignature("claim()"));
+        if (!ok) {
+            assembly {
+                revert(add(why, 32), mload(why))
+            }
+        }
+    }
+
+    receive() external payable {
+        require(accepting, "no thanks");
     }
 }
