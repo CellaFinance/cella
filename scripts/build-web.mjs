@@ -5,6 +5,7 @@ import { copyFileSync, mkdirSync, readFileSync, writeFileSync, statSync, readdir
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { ROOT } from "./lib/local.mjs";
+import { headersFile } from "./lib/headers.mjs";
 
 const file = process.argv[2];
 if (!file) { console.error("usage: node scripts/build-web.mjs <deployment.json> [--relayer URL]"); process.exit(1); }
@@ -28,6 +29,10 @@ copyFileSync(join(ROOT, "build/bench/g16.zkey"), join(pub, "prover/transact.zkey
 execFileSync(join(ROOT, "node_modules/.bin/vite"), ["build", "--config", "vite.config.mjs"], { cwd: ROOT, stdio: "inherit" });
 // The dev chain keeps its own deployment.json in web/public; the built site gets this one.
 writeFileSync(join(ROOT, "build/web/deployment.json"), JSON.stringify(site, null, 2) + "\n");
+// Only this site, the chain's RPC, and the relayer when it lives elsewhere may be contacted.
+const origins = [new URL(site.rpc).origin];
+if (site.relayer && /^https?:/.test(site.relayer)) origins.push(new URL(site.relayer).origin);
+writeFileSync(join(ROOT, "build/web/_headers"), headersFile(origins));
 
 const size = (dir) => readdirSync(dir, { withFileTypes: true }).reduce((t, e) => t + (e.isDirectory() ? size(join(dir, e.name)) : statSync(join(dir, e.name)).size), 0);
 console.log(`\nbuild/web ready: ${(size(join(ROOT, "build/web")) / 1e6).toFixed(1)} MB, for ${site.chainName} (${site.chainId})`);

@@ -449,4 +449,6 @@ Login alat deploy memakai izin sempit: `npx wrangler login --scopes account:read
 
 Menerbitkan ulang setelah ada perubahan: `NODE_OPTIONS=--dns-result-order=ipv4first sh scripts/publish.sh`.
 
-Belum: header keamanan situs (CSP) belum diatur; aturan rate limiting di dasbor Cloudflare belum dibuat; domain sendiri belum ada.
+Header keamanan (ditambahkan sesudahnya, `scripts/lib/headers.mjs`): kebijakan isi yang hanya mengizinkan skrip milik situs sendiri, WebAssembly untuk pembukti, dan sambungan ke RPC chain; ditambah larangan dibingkai, tanpa perujuk, dan tanpa akses kamera, mikrofon, lokasi. Diuji di emulator dengan chain lokal (setor dan tarik lewat relayer, nol pelanggaran), lalu diperiksa di alamat publik lewat Chrome: efek gulir, halaman app, logo wallet, dan pembacaan kolam berjalan tanpa pelanggaran.
+
+Belum: aturan rate limiting di dasbor Cloudflare belum dibuat; domain sendiri belum ada.
