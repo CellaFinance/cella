@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cella — a private room for your ETH on Robinhood Chain</title>
+  <meta name="description" content="Deposit in public, hold and send in private, withdraw whenever you like. No operator keeps your balance.">
+  <link rel="icon" href="/brand/icon-64.png">
+  <link rel="stylesheet" href="/src/landing.css">
+</head>
+<body>
+  <section class="gate" id="gate">
+    <div class="stage" id="stage">
+      <header class="nav">
+        <a class="brand" href="/" aria-label="Cella">
+          <img src="/brand/mark.svg" alt="" width="28" height="28">
+          <span class="wordmark">CELLA</span>
+        </a>
+        <nav>
+          <a href="#inside">How it works</a>
+          <a href="#trust">Trust</a>
+          <a href="#status">Status</a>
+          <a class="launch" href="/app/">Launch app</a>
+        </nav>
+      </header>
+
+      <div class="arch" id="arch" aria-hidden="true">
+        <svg viewBox="0 0 100 100">
+          <path class="wall" id="wallOuter" d="M20 90V46A30 30 0 0 1 80 46V90" />
+          <path class="wall thin" id="wallInner" d="M32 90V47A18 18 0 0 1 68 47V90" />
+          <path class="door" d="M44 90V50A6 6 0 0 1 56 50V90Z" />
+        </svg>
+      </div>
+
+      <div class="hero" id="heroText">
+        <p class="eyebrow">Robinhood Chain</p>
+        <h1>A private room<br>for your ETH.</h1>
+        <p class="lede">Deposit in public. Hold, send and receive in private. Withdraw whenever you like. No operator keeps your balance, and no one can stop you leaving.</p>
+        <p class="cta">
+          <a class="button" href="/app/">Launch app</a>
+          <a class="text-link" href="#inside">How it works</a>
+        </p>
+      </div>
+
+      <p class="cue" id="cue">Scroll to step inside</p>
+    </div>
+  </section>
+
+  <section class="inside" id="inside">
+    <div class="wrap">
+      <p class="eyebrow">Inside</p>
+      <h2 class="reveal">Past the door,<br>the chain sees nothing.</h2>
+      <p class="lede reveal">Cella is a shielded pool. The chain stores only sealed commitments. Your balance exists as notes that only your wallet can open, and every move is checked by a zero-knowledge proof made on your own device.</p>
+
+      <div class="ledger">
+        <div class="ledger-head">
+          <span></span><span>Robinhood Chain sees</span><span>Stays in the room</span>
+        </div>
+        <div class="ledger-row reveal">
+          <h3>Deposit</h3>
+          <p>Your address and the amount.</p>
+          <p>Which note inside is yours.</p>
+        </div>
+        <div class="ledger-row reveal">
+          <h3>Send</h3>
+          <p>That a transaction happened.</p>
+          <p>Who received it, how much, and what you have left.</p>
+        </div>
+        <div class="ledger-row reveal">
+          <h3>Withdraw</h3>
+          <p>The receiving address and the amount.</p>
+          <p>Which deposit the money came from.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dark" id="trust">
+    <div class="wrap">
+      <p class="eyebrow">Trust</p>
+      <h2 class="reveal">Trust the proof,<br>not the operator.</h2>
+      <p class="lede reveal">Most private-payment designs put an operator in the middle who keeps the ledger and could read it, freeze it or lose it. Cella has no such party. The contract accepts a movement of value only when a proof shows it is yours to move.</p>
+
+      <dl class="answers">
+        <div class="reveal"><dt>Who keeps the ledger?</dt><dd>Nobody. There is no server. Your balance is rebuilt from the chain with nothing but your wallet.</dd></div>
+        <div class="reveal"><dt>Who can move your funds?</dt><dd>Only a proof made with your key. Not the owner, not the auditor, not a relayer.</dd></div>
+        <div class="reveal"><dt>Can withdrawals be paused?</dt><dd>No. The owner can pause new deposits, never transfers or withdrawals.</dd></div>
+        <div class="reveal"><dt>Can the contract be changed?</dt><dd>No. There is no upgrade path.</dd></div>
+      </dl>
+
+      <div class="figures">
+        <div class="reveal"><p class="num">2<span>s</span></p><p>to make a proof in a desktop browser</p></div>
+        <div class="reveal"><p class="num">0</p><p>servers that hold your balance</p></div>
+        <div class="reveal"><p class="num">7<span>days</span></p><p>of public notice before the auditor key can change</p></div>
+        <div class="reveal"><p class="num">51<span>/ 51</span></p><p>tests passed, attacks included, on a local copy of the chain</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dark split" id="auditor">
+    <div class="wrap two">
+      <div>
+        <p class="eyebrow">Auditor</p>
+        <h2 class="reveal">Private,<br>not unaccountable.</h2>
+      </div>
+      <div class="reveal">
+        <p class="lede">One named key can read every transfer: who paid whom, and how much. The proof itself forces each transaction to seal a true copy for that key, so a sender cannot hide from the auditor.</p>
+        <p class="lede">The auditor can read. It can never spend, and replacing it takes seven days in plain view.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="dark" id="status">
+    <div class="wrap">
+      <p class="eyebrow">Status</p>
+      <h2 class="reveal">Where Cella stands.</h2>
+      <p class="lede reveal">Cella is not live and has not been audited. Do not send real funds to anything that claims to be Cella today.</p>
+      <div class="steps">
+        <div class="reveal"><span>Circuit</span><span>Written and tested</span></div>
+        <div class="reveal"><span>Contracts</span><span>Written and tested on a local copy of Robinhood Chain</span></div>
+        <div class="reveal"><span>Web app</span><span>Working on a local copy</span></div>
+        <div class="reveal todo"><span>Relayer</span><span>Next</span></div>
+        <div class="reveal todo"><span>Public key ceremony</span><span>Not started</span></div>
+        <div class="reveal todo"><span>Independent audit</span><span>Not started</span></div>
+        <div class="reveal todo"><span>Mainnet</span><span>Not live</span></div>
+      </div>
+      <p class="cta reveal"><a class="button" href="/app/">Launch app</a></p>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div class="wrap foot-row">
+      <span class="wordmark">CELLA</span>
+      <span>Built for Robinhood Chain. Not affiliated with Robinhood.</span>
+    </div>
+  </footer>
+
+  <script type="module" src="/src/landing.js"></script>
+</body>
+</html>

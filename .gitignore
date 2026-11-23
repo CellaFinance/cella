@@ -1,0 +1,8 @@
+node_modules/
+build/
+.tools/
+*.ptau
+*.zkey
+.DS_Store
+web/public/prover/
+web/public/deployment.json

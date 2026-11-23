@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cella app — your private balance</title>
+  <meta name="description" content="Hold and send ETH privately on Robinhood Chain. No operator can see or move your balance.">
+  <link rel="icon" href="/brand/icon-64.png">
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <div id="banner" class="banner" hidden></div>
+
+  <header class="top">
+    <a class="brand" href="/" aria-label="Cella">
+      <img src="/brand/mark.svg" alt="" width="30" height="30">
+      <span class="wordmark">CELLA</span>
+    </a>
+    <div class="wallet">
+      <span id="walletLabel" class="muted"></span>
+      <button id="connect" class="link">Connect wallet</button>
+      <button id="devWallet" class="link" hidden>Use a local test wallet</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="balances">
+        <p class="label">Private balance</p>
+        <p class="figure"><span id="privateBalance">—</span> <span class="unit">ETH</span></p>
+        <p class="muted" id="walletBalanceLine">Connect a wallet to open your private balance.</p>
+        <p class="muted small" id="syncLine"></p>
+        <button id="unlock" class="primary" hidden>Open private balance</button>
+        <p class="muted small" id="unlockHint" hidden>Your wallet will ask you to sign a message. That signature is the key to your private balance, so sign it only here.</p>
+      </div>
+
+      <div class="actions" id="actions" hidden>
+        <nav class="tabs" role="tablist">
+          <button role="tab" data-tab="deposit" aria-selected="true">Deposit</button>
+          <button role="tab" data-tab="send" aria-selected="false">Send</button>
+          <button role="tab" data-tab="withdraw" aria-selected="false">Withdraw</button>
+        </nav>
+
+        <form id="form" novalidate>
+          <label class="field" id="toField" hidden>
+            <span class="label" id="toLabel">To</span>
+            <input id="to" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="0x…">
+          </label>
+          <label class="field">
+            <span class="label">Amount</span>
+            <span class="amount"><input id="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.0"><span class="unit">ETH</span></span>
+          </label>
+          <p class="muted small" id="hint"></p>
+          <button class="primary" id="submit" type="submit">Deposit</button>
+          <p class="status" id="status" role="status" aria-live="polite"></p>
+        </form>
+
+        <div class="sees">
+          <div>
+            <p class="label">Robinhood Chain sees</p>
+            <ul id="seesPublic"></ul>
+          </div>
+          <div>
+            <p class="label">Only you and the auditor see</p>
+            <ul id="seesPrivate"></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="notesBlock" hidden>
+      <h2>Your notes</h2>
+      <p class="muted">Your balance is the sum of notes only your wallet can open. They are read from the chain each time; nothing is stored on a server.</p>
+      <div id="notes" class="rows"></div>
+    </section>
+
+    <section class="block">
+      <h2>Who can do what</h2>
+      <div class="rows" id="rules"></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>Cella is experimental software and has not been audited.</span>
+  </footer>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
