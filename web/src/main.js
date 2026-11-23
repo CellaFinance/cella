@@ -122,14 +122,55 @@ async function render() {
 
 // ---------------- wallets ----------------
 
-async function connectInjected() {
-  if (!window.ethereum) throw new Error("No wallet found in this browser. Install a wallet, or open this page inside your wallet's browser.");
+// Wallets announce themselves (EIP-6963). Older ones only set a global.
+const TRUST = { rdns: "com.trustwallet.app", name: "Trust Wallet", install: "https://trustwallet.com/browser-extension" };
+const announced = new Map();
+addEventListener("eip6963:announceProvider", (e) => { if (e.detail?.info?.rdns) announced.set(e.detail.info.rdns, e.detail); });
+dispatchEvent(new Event("eip6963:requestProvider"));
+
+function walletChoices() {
+  dispatchEvent(new Event("eip6963:requestProvider"));
+  const list = [...announced.values()].map(({ info, provider }) => ({ name: info.name, icon: info.icon, rdns: info.rdns, provider }));
+  const has = (rdns) => list.some((w) => w.rdns === rdns);
+  const legacyTrust = window.trustwallet?.ethereum ?? window.trustwallet ?? (window.ethereum?.isTrust ? window.ethereum : null);
+  if (!has(TRUST.rdns) && legacyTrust?.request) list.push({ name: TRUST.name, icon: null, rdns: TRUST.rdns, provider: legacyTrust });
+  if (!list.length && window.ethereum?.request) list.push({ name: "Browser wallet", icon: null, rdns: "injected", provider: window.ethereum });
+  // Trust Wallet first, the rest by name.
+  return list.sort((x, y) => (x.rdns === TRUST.rdns ? -1 : y.rdns === TRUST.rdns ? 1 : x.name.localeCompare(y.name)));
+}
+
+function showWalletList() {
+  const choices = walletChoices();
+  const rows = choices.map((w) => {
+    const b = Object.assign(document.createElement("button"), { type: "button", className: "wallet-option" });
+    if (w.icon) b.append(Object.assign(document.createElement("img"), { src: w.icon, alt: "" }));
+    b.append(Object.assign(document.createElement("span"), { textContent: w.name }));
+    b.addEventListener("click", () => guarded(() => connectInjected(w.provider)));
+    return b;
+  });
+  if (!choices.some((w) => w.rdns === TRUST.rdns)) {
+    const a = Object.assign(document.createElement("a"), { className: "wallet-option", href: TRUST.install, target: "_blank", rel: "noopener" });
+    a.append(Object.assign(document.createElement("span"), { textContent: TRUST.name }),
+      Object.assign(document.createElement("span"), { textContent: "Not installed in this browser · Get the extension", className: "muted" }));
+    rows.unshift(a);
+  }
+  $("walletOptions").replaceChildren(...rows);
+  $("walletNote").textContent = choices.length ? "" : "No wallet extension was found in this browser. Install one, then reload this page.";
+  $("walletList").hidden = false;
+}
+
+async function connectInjected(provider) {
   const d = state.deployment;
-  const wallet = createWalletClient({ chain: d.chain, transport: custom(window.ethereum) });
+  const wallet = createWalletClient({ chain: d.chain, transport: custom(provider) });
   const [address] = await wallet.requestAddresses();
   try { await wallet.switchChain({ id: d.chainId }); }
   catch (e) { if (e.code === 4001) throw e; await wallet.addChain({ chain: d.chain }); }
+  if ((await wallet.getChainId()) !== d.chainId) throw new Error(`Switch your wallet to ${d.chainName} and connect again.`);
   Object.assign(state, { wallet, account: getAddress(address), address: getAddress(address), client: null });
+  $("walletList").hidden = true;
+  // A different account or network means different keys: start clean.
+  provider.on?.("accountsChanged", () => location.reload());
+  provider.on?.("chainChanged", () => location.reload());
 }
 
 /** Local test copy only: a throwaway key made in this tab and funded by the dev chain. */
@@ -199,7 +240,7 @@ async function guarded(fn, { button } = {}) {
   state.busy = true;
   for (const b of document.querySelectorAll("button")) b.disabled = true;
   try { await fn(); }
-  catch (e) { fail(e); if (!state.client) setUnlockText(e.shortMessage || e.message || String(e)); }
+  catch (e) { fail(e); if (!state.client) setUnlockText(e.shortMessage || e.message || String(e)); if (!state.address) $("walletNote").textContent = e.shortMessage || e.message || String(e); }
   finally {
     state.busy = false;
     for (const b of document.querySelectorAll("button")) b.disabled = false;
@@ -223,7 +264,7 @@ async function start() {
   }
 
   for (const b of document.querySelectorAll(".tabs button")) b.addEventListener("click", () => { state.tab = b.dataset.tab; renderTab(); });
-  $("connect").addEventListener("click", () => guarded(connectInjected));
+  $("connect").addEventListener("click", showWalletList);
   $("devWallet").addEventListener("click", () => guarded(connectDev));
   $("unlock").addEventListener("click", () => guarded(unlock));
   $("form").addEventListener("submit", (e) => { e.preventDefault(); guarded(submit); });
