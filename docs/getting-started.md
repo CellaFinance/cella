@@ -33,4 +33,4 @@ If a recipient is a contract that cannot receive ETH within a small gas allowanc
 - **Keep your wallet.** Your Cella balance is tied to your wallet's signature. Lose the wallet and you lose the balance. There is no recovery service.
 - **Privacy grows with use.** With few users, an observer can guess from amounts and timing. Avoid depositing and withdrawing the same amount close together.
 - **The auditor can read transfers.** One named key can read who paid whom, by design. It cannot move funds. See [Security](/docs/security/).
-- **Check the address.** The pool contract is shown on the home page of this site. Cella has no token: anything else claiming to be Cella's contract is not.
+- **Check the address.** The pool contract addresses are listed in [Deployments](/docs/deployments/). Compare them with what your wallet shows before you confirm anything.
