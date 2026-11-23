@@ -436,3 +436,17 @@ Perubahan:
 Diuji: emulator Pages di Mac ini menyajikan situs dan fungsi relayer; alur penuh ke testnet asli lewat relayer versi Pages lolos (setor, bayar privat, tarik, pemulihan, auditor; saldo cocok dengan 0,002643 ETH di kolam). Tujuh tes relayer lama tetap lolos setelah pemisahan.
 
 Belum: penerbitan ke Cloudflare menunggu pemilik masuk dengan `npx wrangler login`. Batas CPU paket gratis baru bisa diukur setelah terbit.
+
+## 26. Terbit di Cloudflare Pages (23 November 2026)
+
+Alamat publik testnet: **https://cella-br5.pages.dev** (proyek Pages `cella`). Relayer di `https://cella-br5.pages.dev/api/relayer`, alamat gas `0x9CE1e7a92093e6aD8D981632bCD9B10E72F18DBF`.
+
+Diperiksa di alamat publik: halaman depan, `/app/`, `/auditor/`, `deployment.json`, dan kunci pembukti 19 MB (terunduh dalam sekitar 7 detik) semuanya terlayani; `/api/relayer/info` menjawab dengan kolam dan chain yang benar.
+
+Alur penuh ke testnet lewat relayer yang terbit (`node scripts/testnet-smoke.mjs --relayer https://cella-br5.pages.dev/api/relayer`): setor, bayar privat, tarik, pemulihan, dan auditor lolos; saldo cocok dengan 0,003498 ETH di kolam. Dua transaksi yang diteruskan relayer berhasil di paket gratis tanpa galat batas CPU. Dua contoh belum membuktikan batas itu aman di semua keadaan.
+
+Login alat deploy memakai izin sempit: `npx wrangler login --scopes account:read user:read pages:write`. Di jaringan Mac ini IPv6 tidak jalan, jadi perintah wrangler dijalankan dengan `NODE_OPTIONS=--dns-result-order=ipv4first`; tanpa itu login pertama gagal karena habis waktu.
+
+Menerbitkan ulang setelah ada perubahan: `NODE_OPTIONS=--dns-result-order=ipv4first sh scripts/publish.sh`.
+
+Belum: header keamanan situs (CSP) belum diatur; aturan rate limiting di dasbor Cloudflare belum dibuat; domain sendiri belum ada.

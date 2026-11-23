@@ -4,7 +4,7 @@ Untuk Robinhood Chain Testnet (chain ID 46630). Mainnet sengaja diblokir di skri
 
 Semua perintah dijalankan dari folder `~/Documents/cella`.
 
-> Status 23 November 2026: langkah 1 sampai 4 sudah dijalankan. Alamat kontrak ada di `deployments/46630.json` dan di `docs/RANCANGAN.md` bagian 23. Uji dengan wallet sungguhan (Trust Wallet di Chrome) juga sudah. Yang tersisa: menerbitkan situs dan relayer ke Cloudflare Pages (langkah 5 dan 6).
+> Status 23 November 2026: langkah 1 sampai 4 sudah dijalankan. Alamat kontrak ada di `deployments/46630.json` dan di `docs/RANCANGAN.md` bagian 23. Uji dengan wallet sungguhan (Trust Wallet di Chrome) juga sudah. Situs dan relayer sudah terbit di https://cella-br5.pages.dev (langkah 5 dan 6).
 
 ## Yang sudah disiapkan
 
@@ -57,13 +57,15 @@ Situs dan relayer diterbitkan bersama. Relayer berjalan sebagai fungsi di alamat
 Sekali saja, masuk ke Cloudflare (membuka browser):
 
 ```bash
-npx wrangler login
+NODE_OPTIONS=--dns-result-order=ipv4first npx wrangler login --scopes account:read user:read pages:write
 ```
+
+Izin itu hanya untuk Pages; domain dan tunnel lain di akun yang sama tidak ikut terbuka.
 
 Lalu terbitkan:
 
 ```bash
-sh scripts/publish.sh
+NODE_OPTIONS=--dns-result-order=ipv4first sh scripts/publish.sh
 ```
 
 Skrip itu membangun situs untuk `deployments/46630.json`, membuat proyek Pages bernama `cella` bila belum ada, mengirim kunci relayer sebagai rahasia (tidak dicetak), dan mengunggah `build/web` beserta folder `functions/`. Alamat situsnya tercetak di akhir.
