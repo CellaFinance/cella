@@ -34,12 +34,12 @@ function limited(ip, perMinute = 20) {
   return recent.length > perMinute;
 }
 
-export async function onInfo(context) {
+async function info(context) {
   try { return json(200, await (await relayerFor(context)).core.info()); }
   catch { return json(503, { error: "the relayer is not available" }); }
 }
 
-export async function onRelay(context) {
+async function relay(context) {
   const { request } = context;
   try {
     if (limited(request.headers.get("cf-connecting-ip") ?? "?")) return json(429, { error: "too many requests; try again in a minute" });
@@ -67,3 +67,23 @@ export async function onRelay(context) {
     return json(500, { error: "the relayer could not send this transaction" });
   }
 }
+
+// The site may be hosted on another address (cella.finance) while this function stays here.
+// Only the listed origins may call it from a browser; the site's own address needs no entry.
+const ALLOWED = ["https://cella.finance", "https://www.cella.finance"];
+function withCors(context, response) {
+  const origin = context.request.headers.get("origin");
+  const allowed = (context.env.CELLA_ALLOW_ORIGINS ? context.env.CELLA_ALLOW_ORIGINS.split(",").map((x) => x.trim()) : ALLOWED);
+  const headers = new Headers(response.headers);
+  headers.append("vary", "origin");
+  if (origin && allowed.includes(origin)) {
+    headers.set("access-control-allow-origin", origin);
+    headers.set("access-control-allow-methods", "GET, POST, OPTIONS");
+    headers.set("access-control-allow-headers", "content-type");
+    headers.set("access-control-max-age", "86400");
+  }
+  return new Response(response.body, { status: response.status, headers });
+}
+export const onInfo = async (context) => withCors(context, await info(context));
+export const onRelay = async (context) => withCors(context, await relay(context));
+export const onOptions = async (context) => withCors(context, new Response(null, { status: 204 }));

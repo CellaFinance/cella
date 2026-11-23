@@ -57,19 +57,32 @@ const seen = new IntersectionObserver((entries) => {
 }, { rootMargin: "0px 0px -8% 0px" });
 for (const el of document.querySelectorAll(".reveal")) seen.observe(el);
 
-// The status section says where this copy of the site points: a test network or mainnet.
+// Contract address: shown in full, one tap to copy.
+for (const box of document.querySelectorAll("[data-ca]")) {
+  const button = box.querySelector("[data-ca-copy]"), addr = box.querySelector("[data-ca-addr]");
+  button.addEventListener("click", async () => {
+    const text = addr.textContent.trim();
+    try { await navigator.clipboard.writeText(text); }
+    catch {
+      const range = document.createRange(); range.selectNodeContents(addr);
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range);
+      try { document.execCommand("copy"); } catch { /* the address stays selected for a manual copy */ }
+    }
+    button.textContent = "Copied";
+    setTimeout(() => { button.textContent = "Copy"; }, 1600);
+  });
+}
+
+// The page is written for mainnet. A copy of the site that points at a test network says so
+// and shows that network's addresses instead.
 fetch("/deployment.json", { cache: "no-store" }).then((r) => r.json()).then((d) => {
-  if (d.dev || d.testKey) return;
-  const rows = [
-    ["Circuit", "Written and tested", false],
-    ["Contracts", `Live on ${d.chainName}. Limits: ${d.maxDeposit ?? "0.1"} ETH per deposit, ${d.poolCap ?? "5"} ETH in total`, false],
-    ["Web app, relayer, auditor tool", "Live", false],
-    ["Proving key", "Public Hermez ceremony, then one contribution and a chain beacon. More contributors welcome", false],
-    ["Independent audit", "Not done yet", true],
-  ];
-  document.getElementById("statusLede").textContent = `Cella is live on ${d.chainName} as a limited beta. No outside firm has audited it yet, so deposits are capped. Use only amounts you could afford to lose.`;
-  document.getElementById("statusSteps").replaceChildren(...rows.map(([k, v, todo]) => {
-    const row = Object.assign(document.createElement("div"), { className: "in" + (todo ? " todo" : "") });
+  if (!d.dev && !d.testKey) return;
+  const set = (sel, v) => { for (const el of document.querySelectorAll(sel)) if (v) el.textContent = v; };
+  set("[data-ca-addr]", d.pool); set("[data-ca-registry]", d.registry); set("[data-ca-verifier]", d.verifier); set("[data-ca-hasher]", d.hasher);
+  set("[data-ca-chain]", d.chainName);
+  document.getElementById("statusLede").textContent = "This copy of Cella runs on a test network only. Do not send real funds to it.";
+  document.getElementById("statusSteps").replaceChildren(...[["Network", d.chainName], ["Proving key", "Local test key, not for real funds"]].map(([k, v]) => {
+    const row = Object.assign(document.createElement("div"), { className: "in" });
     row.append(Object.assign(document.createElement("span"), { textContent: k }), Object.assign(document.createElement("span"), { textContent: v }));
     return row;
   }));

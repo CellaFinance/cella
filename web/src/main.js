@@ -205,7 +205,7 @@ async function unlock() {
     throw new Error("This wallet gave a different signature than last time, so your earlier private balance cannot be opened with it.");
   }
   const client = new CellaClient({ publicClient: state.pub, walletClient: state.wallet, account: state.account, deployment: d, keys, relayerUrl: d.relayer ?? null,
-    prove: (signals) => snarkjs.groth16.fullProve(signals, "/prover/transact.wasm", "/prover/transact.zkey") });
+    prove: (signals) => snarkjs.groth16.fullProve(signals, "/prover/transact.wasm", d.zkey ?? "/prover/transact.zkey") });
   client.onStatus = (s) => setStatus({ proving: "Making the proof on this device…", sending: "Sending to Robinhood Chain…", relaying: "Handing it to the relayer…", merging: "Combining your notes first…", done: "" }[s] ?? "");
 
   if (!known) { setUnlockText("Publishing your Cella address…"); await client.register(); }

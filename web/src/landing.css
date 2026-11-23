@@ -124,3 +124,27 @@ h2 { font-size: clamp(38px, 5.2vw, 72px); line-height: 1.02; letter-spacing: -0.
   .figures { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 44px 24px; }
   .two { grid-template-columns: 1fr; gap: 0; }
 }
+
+/* ---------- contract address ---------- */
+.ca { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 30px 0 0; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); max-width: 640px; }
+.ca-label { font-size: 12px; letter-spacing: 0.2em; color: var(--muted); }
+.ca-addr { font: 400 14px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--ivory); overflow-wrap: anywhere; user-select: all; flex: 1 1 280px; }
+.ca-copy { font: 500 13px var(--sans); color: var(--onyx); background: var(--ivory); border: 0; border-radius: 2px; padding: 8px 16px; cursor: pointer; transition: opacity 160ms ease; min-width: 74px; }
+.ca-copy:hover { opacity: 0.86; }
+.ca-big { margin-top: 44px; max-width: 880px; padding: 22px 0; }
+.ca-big .ca-addr { font-size: clamp(14px, 2.4vw, 22px); }
+.ca-note { margin: 18px 0 0; color: var(--muted); font-size: 15px; max-width: 60ch; }
+.ca-list { margin: 44px 0 0; border-top: 1px solid var(--line); max-width: 880px; }
+.ca-list > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 4fr); gap: 24px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.ca-list dt { color: var(--muted); font-size: 14px; }
+.ca-list dd { margin: 0; }
+.ca-list code { font: 400 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: #c9c5bc; overflow-wrap: anywhere; }
+.foot-links { display: flex; gap: 22px; }
+.foot-links a { text-decoration: none; color: var(--muted); }
+.foot-links a:hover { color: var(--ivory); }
+@media (max-width: 860px) {
+  .hero .ca { margin-top: 20px; padding: 10px 0; gap: 10px; }
+  .hero .ca-addr { font-size: 12px; flex-basis: 100%; order: 3; }
+  .hero .ca-copy { margin-left: auto; padding: 6px 12px; }
+  .ca-list > div { grid-template-columns: 1fr; gap: 4px; }
+}

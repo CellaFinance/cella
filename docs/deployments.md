@@ -11,7 +11,7 @@ Beta, unaudited. Deposit limits: 0.1 ETH each, 5 ETH in total. Owner: `0xb7f1C28
 | Groth16VerifierMainnet | `0x6e654fb9f3af625c553ffcbd0f8f0963848c2090` |
 | Hasher | `0x85b67b781dee8792694a5038668a35ebb12c61fb` |
 
-Data file: `deployments/4663.json`. App: https://cella-mainnet.pages.dev
+Data file: `deployments/4663.json`. Website and app: https://cella.finance (also reachable at https://cella-mainnet.pages.dev)
 
 ## Robinhood Chain Testnet (46630)
 
@@ -48,3 +48,17 @@ Check a deployment end to end with small amounts:
 ```bash
 node scripts/testnet-smoke.mjs --deployment deployments/4663.json --relayer https://<site>/api/relayer
 ```
+
+## Hosting layout
+
+- **cella.finance** is a static site on Hostinger. Build it with the relayer and proving key pointing at the Cloudflare project, then upload the folder (or a zip of it) as the website's files:
+
+  ```bash
+  node scripts/build-web.mjs deployments/4663.json \
+    --relayer https://cella-mainnet.pages.dev/api/relayer \
+    --zkey-url https://cella-mainnet.pages.dev/prover/transact.zkey
+  ```
+
+  The build writes `.htaccess` (security headers, `application/wasm`, caching) next to `_headers`, which Cloudflare reads. Leave `prover/transact.zkey` (19 MB) out of the upload: the site loads it from the Cloudflare project.
+- **cella-mainnet.pages.dev** (Cloudflare Pages) serves the relayer (`/api/relayer`) and the proving key, and answers browser calls from `https://cella.finance` and `https://www.cella.finance` (CORS; change the list with the `CELLA_ALLOW_ORIGINS` setting).
+- The documentation pages are built from `docs/*.md` by `scripts/build-docs.mjs` as part of the site build.

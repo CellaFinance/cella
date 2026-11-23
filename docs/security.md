@@ -1,6 +1,6 @@
 # Security
 
-**Cella is beta software and has not been audited by an outside firm.** The deposit caps (0.1 ETH each, 5 ETH in total on mainnet) exist so that a mistake costs little. If you find a problem, please report it privately before disclosing it.
+**Cella is beta software and has not been audited by an outside firm.** The deposit caps (0.1 ETH each, 5 ETH in total on mainnet) exist so that a mistake costs little. If you find a problem, please report it privately before disclosing it: send a direct message to [@cellafinance](https://x.com/cellafinance) on X.
 
 ## What Cella promises
 

@@ -6,8 +6,10 @@ Cella is a shielded pool. You deposit ETH into one shared pool, pay other Cella 
 
 > **Beta. Not audited by an outside firm.** Use small amounts. On mainnet deposits are capped at 0.1 ETH each and 5 ETH in total. See [Security](docs/security.md) for what Cella does and does not promise.
 
-- App (mainnet): https://cella-mainnet.pages.dev
-- App (testnet): https://cella-br5.pages.dev
+- Website and app: https://cella.finance
+- Docs: https://cella.finance/docs/
+- X: https://x.com/cellafinance
+- App on testnet: https://cella-br5.pages.dev
 
 ## How it works, in short
 

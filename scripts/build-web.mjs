@@ -5,17 +5,20 @@ import { copyFileSync, mkdirSync, readFileSync, writeFileSync, statSync, readdir
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { ROOT } from "./lib/local.mjs";
-import { headersFile } from "./lib/headers.mjs";
+import { headersFile, htaccessFile } from "./lib/headers.mjs";
 
 const file = process.argv[2];
 if (!file) { console.error("usage: node scripts/build-web.mjs <deployment.json> [--relayer URL]"); process.exit(1); }
 const relayerAt = process.argv.indexOf("--relayer");
 const relayer = relayerAt > 0 ? process.argv[relayerAt + 1] : null;
+// Optional: serve the large proving key from another address (see docs/deployments.md).
+const zkeyAt = process.argv.indexOf("--zkey-url");
+const zkeyUrl = zkeyAt > 0 ? process.argv[zkeyAt + 1] : null;
 
 const d = JSON.parse(readFileSync(file, "utf8"));
 // Only what a browser needs. Never a test secret, never a local-only flag.
 const site = { chainId: d.chainId, chainName: d.chainName, rpc: d.rpc, explorer: d.explorer ?? null,
-  pool: d.pool, registry: d.registry, fromBlock: d.fromBlock, relayer: relayer ?? null, testKey: !!d.testKey,
+  pool: d.pool, registry: d.registry, fromBlock: d.fromBlock, relayer: relayer ?? null, zkey: zkeyUrl, testKey: !!d.testKey,
   maxDeposit: d.maxDeposit ?? null, poolCap: d.poolCap ?? null };
 for (const k of ["chainId", "rpc", "pool", "registry", "fromBlock"]) {
   if (site[k] === undefined || site[k] === null) { console.error(`the deployment file has no ${k}`); process.exit(1); }
@@ -34,7 +37,10 @@ writeFileSync(join(ROOT, "build/web/deployment.json"), JSON.stringify(site, null
 // Only this site, the chain's RPC, and the relayer when it lives elsewhere may be contacted.
 const origins = [new URL(site.rpc).origin];
 if (site.relayer && /^https?:/.test(site.relayer)) origins.push(new URL(site.relayer).origin);
-writeFileSync(join(ROOT, "build/web/_headers"), headersFile(origins));
+if (zkeyUrl) origins.push(new URL(zkeyUrl).origin);
+writeFileSync(join(ROOT, "build/web/_headers"), headersFile(origins));      // Cloudflare Pages
+writeFileSync(join(ROOT, "build/web/.htaccess"), htaccessFile(origins));    // Apache / LiteSpeed (Hostinger)
+execFileSync(process.execPath, [join(ROOT, "scripts/build-docs.mjs")], { stdio: "inherit" });
 
 const size = (dir) => readdirSync(dir, { withFileTypes: true }).reduce((t, e) => t + (e.isDirectory() ? size(join(dir, e.name)) : statSync(join(dir, e.name)).size), 0);
 console.log(`\nbuild/web ready: ${(size(join(ROOT, "build/web")) / 1e6).toFixed(1)} MB, for ${site.chainName} (${site.chainId})`);

@@ -19,7 +19,8 @@
         <nav>
           <a href="#inside">How it works</a>
           <a href="#trust">Trust</a>
-          <a href="#status">Status</a>
+          <a href="#contract">Contract</a>
+          <a href="/docs/">Docs</a>
           <a class="launch" href="/app/">Launch app</a>
         </nav>
       </header>
@@ -40,6 +41,11 @@
           <a class="button" href="/app/">Launch app</a>
           <a class="text-link" href="#inside">How it works</a>
         </p>
+        <div class="ca" data-ca>
+          <span class="ca-label">CA</span>
+          <code class="ca-addr" data-ca-addr>0x6bfd78e6c3761b8a8e5ea216b39e64c82b9c76cd</code>
+          <button class="ca-copy" type="button" data-ca-copy aria-label="Copy the contract address">Copy</button>
+        </div>
       </div>
 
       <p class="cue" id="cue">Scroll to step inside</p>
@@ -92,7 +98,7 @@
         <div class="reveal"><p class="num">2<span>s</span></p><p>to make a proof in a desktop browser</p></div>
         <div class="reveal"><p class="num">0</p><p>servers that hold your balance</p></div>
         <div class="reveal"><p class="num">7<span>days</span></p><p>of public notice before the auditor key can change</p></div>
-        <div class="reveal"><p class="num">66<span>/ 66</span></p><p>tests passed, attacks included, on a local copy of the chain</p></div>
+        <div class="reveal"><p class="num">0.1<span>ETH</span></p><p>the most one deposit can be during the beta</p></div>
       </div>
     </div>
   </section>
@@ -111,18 +117,36 @@
     </div>
   </section>
 
+  <section class="dark" id="contract">
+    <div class="wrap">
+      <p class="eyebrow">Contract</p>
+      <h2 class="reveal">The address,<br>in full.</h2>
+      <p class="lede reveal">This is the Cella pool on <span data-ca-chain>Robinhood Chain</span>. It holds the deposits and checks every proof. Compare it with what the app and the docs show before you send anything.</p>
+      <div class="ca ca-big reveal" data-ca>
+        <span class="ca-label">CA</span>
+        <code class="ca-addr" data-ca-addr>0x6bfd78e6c3761b8a8e5ea216b39e64c82b9c76cd</code>
+        <button class="ca-copy" type="button" data-ca-copy aria-label="Copy the contract address">Copy</button>
+      </div>
+      <p class="ca-note reveal">Cella has no token. This is a contract address, not a token address. Anyone offering a Cella token is not us.</p>
+      <dl class="ca-list reveal" id="caList">
+        <div><dt>Registry</dt><dd><code data-ca-registry>0x8d6cde1ff699de46543adc404ccdeb8a3b5b243d</code></dd></div>
+        <div><dt>Verifier</dt><dd><code data-ca-verifier>0x6e654fb9f3af625c553ffcbd0f8f0963848c2090</code></dd></div>
+        <div><dt>Hasher</dt><dd><code data-ca-hasher>0x85b67b781dee8792694a5038668a35ebb12c61fb</code></dd></div>
+      </dl>
+    </div>
+  </section>
+
   <section class="dark" id="status">
     <div class="wrap">
       <p class="eyebrow">Status</p>
       <h2 class="reveal">Where Cella stands.</h2>
-      <p class="lede reveal" id="statusLede">Cella runs on a test network only and has not been audited. Do not send real funds to anything that claims to be Cella today.</p>
+      <p class="lede reveal" id="statusLede">Cella is live on Robinhood Chain as a limited beta. No outside firm has audited it yet, so deposits are capped. Use only amounts you could afford to lose.</p>
       <div class="steps" id="statusSteps">
         <div class="reveal"><span>Circuit</span><span>Written and tested</span></div>
-        <div class="reveal"><span>Contracts</span><span>Written, tested, and deployed on Robinhood Chain testnet</span></div>
-        <div class="reveal"><span>Web app, relayer, auditor tool</span><span>Working on the test network</span></div>
-        <div class="reveal todo"><span>Public key ceremony</span><span>Not started</span></div>
-        <div class="reveal todo"><span>Independent audit</span><span>Not started</span></div>
-        <div class="reveal todo"><span>Mainnet</span><span>Not live</span></div>
+        <div class="reveal"><span>Contracts</span><span>Live on Robinhood Chain. Limits: 0.1 ETH per deposit, 5 ETH in total</span></div>
+        <div class="reveal"><span>Web app, relayer, auditor tool</span><span>Live</span></div>
+        <div class="reveal"><span>Proving key</span><span>Public Hermez ceremony, then one contribution and a chain beacon. More contributors welcome</span></div>
+        <div class="reveal todo"><span>Independent audit</span><span>Not done yet</span></div>
       </div>
       <p class="cta reveal"><a class="button" href="/app/">Launch app</a></p>
     </div>
@@ -131,6 +155,7 @@
   <footer class="foot">
     <div class="wrap foot-row">
       <span class="wordmark">CELLA</span>
+      <span class="foot-links"><a href="/docs/">Docs</a><a href="https://x.com/cellafinance" rel="noopener">X</a><a href="/app/">App</a></span>
       <span>Built for Robinhood Chain. Not affiliated with Robinhood.</span>
     </div>
   </footer>
