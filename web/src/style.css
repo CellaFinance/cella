@@ -120,3 +120,6 @@ button:disabled { opacity: 0.35; cursor: default; }
 .wallet-option .muted { margin-left: auto; font-size: 13px; }
 a.wallet-option { text-decoration: none; color: inherit; }
 @media (max-width: 820px) { .wallet-list { padding: 0 16px 24px; } }
+
+/* A payment waiting to be collected: plain line, set apart by a rule. */
+.held { margin-top: 14px; padding-top: 12px; border-top: 1px solid currentColor; border-color: rgba(128,128,128,.28); font-size: .95rem; }

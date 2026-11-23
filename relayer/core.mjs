@@ -6,6 +6,7 @@
 //     into the proof; an edited transaction is refused by the contract.
 //   - It can refuse to serve. Users can always send the transaction themselves.
 //   - It sees the caller's IP address and the (already public) transaction.
+import { encodeFunctionData, keccak256 } from "viem";
 import { poolAbi } from "../src/abi.mjs";
 
 const UINT = /^\d{1,78}$/, INT = /^-?\d{1,78}$/, HEX = /^0x([0-9a-fA-F]{2}){0,400}$/, ADDR = /^0x[0-9a-fA-F]{40}$/;
@@ -13,6 +14,13 @@ export const MAX_BODY = 24_000;
 
 /** A request the relayer declines; its message is safe to show the caller. */
 export class Refused extends Error {}
+/** The chain's RPC did not answer after several tries. Nothing is wrong with the request. */
+export class Unavailable extends Error {}
+const BUSY = "the network did not answer; nothing was sent, try again in a moment";
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/** True when the pool itself said no, as opposed to the RPC failing to answer. */
+const isRevert = (err) => !!err?.walk?.((e) => /Revert|ZeroData/.test(e?.name ?? "")) || /revert/i.test(String(err?.details ?? ""));
+const nonceTaken = (err) => /nonce|already known|replacement/i.test(String(err?.details ?? err?.message ?? ""));
 const need = (ok, why) => { if (!ok) throw new Refused(why); };
 const uint = (v, what) => { need(typeof v === "string" && UINT.test(v), `${what} must be a decimal number`); return BigInt(v); };
 const list = (v, n, what) => { need(Array.isArray(v) && v.length === n, `${what} must have ${n} values`); return v.map((x, i) => uint(x, `${what}[${i}]`)); };
@@ -43,8 +51,19 @@ export function parseRequest(body) {
  * With `wait` off, submit() returns as soon as the transaction is sent.
  */
 export function makeRelayer({ publicClient, walletClient, account, pool, chainId, gasUnits = 1_500_000n, marginPercent = 150n,
-  tolerancePercent = 90n, wait = true, log = () => {} }) {
+  tolerancePercent = 90n, wait = true, retries = 3, retryDelayMs = 400, log = () => {} }) {
   const address = account.address;
+  /** Tries again when the RPC fails; stops at once when `final(err)` says the answer is real. */
+  async function patient(fn, final = () => false) {
+    for (let i = 0; ; i++) {
+      try { return await fn(i); }
+      catch (err) {
+        if (final(err, i) || i >= retries) throw err;
+        log(`rpc trouble, try ${i + 2}: ${err.shortMessage ?? err.message}`);
+        await sleep(retryDelayMs * (i + 1));
+      }
+    }
+  }
   const quote = async () => (await publicClient.getGasPrice()) * gasUnits * marginPercent / 100n;
   const info = async () => ({ address, chainId, pool, fee: (await quote()).toString() });
 
@@ -61,9 +80,31 @@ export function makeRelayer({ publicClient, walletClient, account, pool, chainId
   /** Simulates against the pool, and sends only what the pool would accept. */
   async function submit({ proof, ext }, { nonce } = {}) {
     const call = { address: pool, abi: poolAbi, functionName: "transact", args: [proof, ext], account };
-    try { await publicClient.simulateContract({ ...call, gas: 6_000_000n }); }
-    catch (err) { throw new Refused("the pool would refuse this transaction: " + (err.shortMessage ?? "simulation failed")); }
-    const hash = await walletClient.writeContract({ ...call, gas: 3_000_000n, ...(nonce === undefined ? {} : { nonce }) });
+    try { await patient(() => publicClient.simulateContract({ ...call, gas: 6_000_000n }), isRevert); }
+    catch (err) {
+      if (isRevert(err)) throw new Refused("the pool would refuse this transaction: " + (err.shortMessage ?? "simulation failed"));
+      throw new Unavailable(BUSY);
+    }
+
+    let hash;
+    if (account.signTransaction) {
+      // Signed once, so sending it again after an RPC failure can never pay twice:
+      // the chain takes the same signed transaction at most once.
+      let raw;
+      try {
+        const request = await patient(() => walletClient.prepareTransactionRequest({ account, to: pool,
+          data: encodeFunctionData({ abi: poolAbi, functionName: "transact", args: [proof, ext] }), gas: 3_000_000n,
+          ...(nonce === undefined ? {} : { nonce }) }));
+        raw = await account.signTransaction(request);
+      } catch (err) { log("error " + (err.shortMessage ?? err.message)); throw new Unavailable(BUSY); }
+      hash = keccak256(raw);
+      // A "nonce taken" answer on the first try means another transaction won the nonce
+      // and the caller picks a new one. On a later try it means our earlier try arrived.
+      await patient((i) => walletClient.sendRawTransaction({ serializedTransaction: raw }).catch((err) => { if (i > 0 && nonceTaken(err)) return hash; throw err; }),
+        (err, i) => i === 0 && nonceTaken(err));
+    } else {
+      hash = await walletClient.writeContract({ ...call, gas: 3_000_000n, ...(nonce === undefined ? {} : { nonce }) });
+    }
     if (!wait) { log(`sent ${hash} fee ${ext.fee}`); return { hash }; }
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
     if (receipt.status !== "success") throw new Error("mined but failed");

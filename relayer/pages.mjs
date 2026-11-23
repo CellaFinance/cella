@@ -5,7 +5,7 @@
 // only setting is one secret: CELLA_RELAYER_KEY, the gas wallet's private key.
 import { createPublicClient, createWalletClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { makeRelayer, Refused, MAX_BODY } from "./core.mjs";
+import { makeRelayer, Refused, Unavailable, MAX_BODY } from "./core.mjs";
 
 const json = (code, obj) => new Response(JSON.stringify(obj), { status: code, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 let cached = null;
@@ -57,12 +57,13 @@ export async function onRelay(context) {
         const nonce = await publicClient.getTransactionCount({ address: core.address, blockTag: "pending" });
         return json(200, await core.submit(checked, { nonce }));
       } catch (err) {
-        if (err instanceof Refused) throw err;
+        if (err instanceof Refused || err instanceof Unavailable) throw err;
         if (attempt >= 2 || !/nonce|already known|replacement/i.test(String(err.details ?? err.message))) throw err;
       }
     }
   } catch (err) {
     if (err instanceof Refused) return json(400, { error: err.message });
+    if (err instanceof Unavailable) return json(503, { error: err.message });
     return json(500, { error: "the relayer could not send this transaction" });
   }
 }

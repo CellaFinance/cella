@@ -507,3 +507,20 @@ Diuji di kolam baru lewat alamat publik: setor 0,001, bayar privat 0,0004 lewat 
 Dua percobaan tarik lewat relayer gagal lebih dulu, dengan pesan "could not send" lalu "RPC Request failed" pada tahap simulasi. Transaksi yang sama berhasil saat dikirim langsung, dan relayer berhasil pada dua percobaan berikutnya, jadi kontrak tidak menolaknya. Sebabnya belum dipastikan; dugaan: RPC testnet menolak sementara permintaan dari relayer. Relayer saat ini tidak mencoba ulang saat RPC gagal.
 
 Catatan menjalankan tes: `npm test` menjalankan empat salinan chain sekaligus; diulang beberapa kali berturut-turut, RPC publik menolak dengan 429. Bila itu terjadi, tunggu semenit atau pakai `node --test --test-concurrency=1 test/`.
+
+## 28. Coba-ulang relayer dan klaim di app (23 November 2026)
+
+**Relayer (`relayer/core.mjs`).** Kegagalan RPC kini dibedakan dari penolakan kontrak:
+
+- Simulasi yang gagal karena RPC dicoba lagi sampai 3 kali dengan jeda yang makin panjang. Penolakan oleh kolam tidak dicoba ulang dan tetap dijawab 400.
+- Transaksi ditandatangani satu kali, lalu transaksi bertanda tangan yang sama itulah yang dikirim ulang bila RPC gagal. Chain menerima transaksi yang sama paling banyak sekali, jadi coba-ulang tidak bisa membayar dua kali.
+- Bila RPC tetap tidak menjawab, relayer membalas 503 dengan pesan bahwa tidak ada yang terkirim. Klien mencoba lagi dua kali untuk jawaban 503.
+
+**Klaim.** Klien mendapat `owed()`, `claim()`, dan `CellaClient.heldIn(receipt)`. Di app:
+
+- Bila kolam menahan ETH untuk wallet yang tersambung, muncul satu baris dengan tombol "Collect it". Ini bekerja tanpa membuka saldo privat.
+- Setelah penarikan, bila penerima tidak menerima ETH-nya, app mengatakan itu alih-alih "Withdrew".
+
+Tes baru: RPC yang tersendat (dua simulasi gagal, lalu satu pengiriman yang jawabannya hilang) tetap menghasilkan tepat satu transaksi; RPC mati menghasilkan 503 tanpa transaksi; penolakan kolam tetap 400; penarikan ke penerima yang menolak terbaca oleh klien dan bisa diambil. Jumlah tes kini 69.
+
+Belum diuji: baris klaim di app belum pernah terlihat dengan saldo tertahan sungguhan di browser, karena wallet biasa tidak pernah punya saldo tertahan. Yang diperiksa hanya bahwa halaman terbit tanpa galat dan logikanya lolos tes klien.

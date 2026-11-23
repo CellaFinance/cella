@@ -5,6 +5,7 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import * as snarkjs from "snarkjs";
 import { deriveKeys } from "../../src/keys.mjs";
 import { CellaClient } from "../../src/client.mjs";
+import { poolAbi } from "../../src/abi.mjs";
 
 const $ = (id) => document.getElementById(id);
 const short = (a) => `${a.slice(0, 6)}…${a.slice(-4)}`;
@@ -104,6 +105,11 @@ async function render() {
 
   const walletBalance = await state.pub.getBalance({ address });
   $("walletBalanceLine").textContent = `In your wallet: ${eth(walletBalance)} ETH`;
+  // A payment this wallet could not accept when it was sent waits in the pool for it.
+  const owed = await state.pub.readContract({ address: state.deployment.pool, abi: poolAbi, functionName: "owed", args: [address] }).catch(() => 0n);
+  state.owed = owed;
+  $("heldLine").hidden = owed === 0n;
+  $("heldText").textContent = `${eth(owed)} ETH from Cella is waiting for this wallet.`;
   $("unlock").hidden = !!client;
   $("unlockHint").hidden = !!client;
   $("actions").hidden = !client;
@@ -237,10 +243,23 @@ async function submit() {
     await client.transfer(getAddress(to), amount);
     setStatus(`Sent ${eth(amount)} ETH privately to ${short(to)}.`);
   } else {
-    await client.withdraw(getAddress(to), amount);
-    setStatus(`Withdrew ${eth(amount)} ETH to ${short(to)}.`);
+    const receipt = await client.withdraw(getAddress(to), amount);
+    const held = CellaClient.heldIn(receipt).some((h) => getAddress(h.to) === getAddress(to));
+    setStatus(held ? `${short(to)} did not accept the ETH, so ${eth(amount)} ETH is waiting in Cella for that address to collect. It has left your private balance.`
+      : `Withdrew ${eth(amount)} ETH to ${short(to)}.`);
   }
   $("amount").value = "";
+}
+
+/** Works before the private balance is opened: collecting needs the wallet only. */
+async function collect() {
+  const amount = state.owed ?? 0n;
+  const call = { address: state.deployment.pool, abi: poolAbi, functionName: "claim", args: [], account: state.account };
+  await state.pub.simulateContract({ ...call, gas: 1_000_000n });
+  const hash = await state.wallet.writeContract({ ...call, gas: 300_000n });
+  const receipt = await state.pub.waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") throw new Error("The transaction was mined but failed.");
+  $("syncLine").textContent = `Collected ${eth(amount)} ETH into your wallet.`;
 }
 
 async function guarded(fn, { button } = {}) {
@@ -275,6 +294,7 @@ async function start() {
   $("connect").addEventListener("click", showWalletList);
   $("devWallet").addEventListener("click", () => guarded(connectDev));
   $("unlock").addEventListener("click", () => guarded(unlock));
+  $("collect").addEventListener("click", () => guarded(collect));
   $("form").addEventListener("submit", (e) => { e.preventDefault(); guarded(submit); });
 
   document.querySelector("main").classList.add("rise");

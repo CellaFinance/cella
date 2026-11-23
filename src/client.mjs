@@ -1,7 +1,7 @@
 // The Cella client: reads the pool's events, finds the notes that belong to one
 // set of keys, and builds deposits, private transfers and withdrawals.
 // It keeps nothing on a server; everything is rebuilt from the chain.
-import { encodeAbiParameters, keccak256, zeroAddress } from "viem";
+import { encodeAbiParameters, keccak256, zeroAddress, parseEventLogs } from "viem";
 import * as C from "./cella.mjs";
 import { encryptNote, decryptNote } from "./notes.mjs";
 import { poolAbi, registryAbi } from "./abi.mjs";
@@ -34,8 +34,8 @@ export class CellaClient {
    * relayerUrl: optional; transfers and withdrawals then go through it, so this
    *             wallet's address stays off them. Deposits are always sent directly.
    */
-  constructor({ publicClient, walletClient, account, deployment, keys, prove, relayerUrl = null, logChunk = 2_000_000n }) {
-    Object.assign(this, { publicClient, walletClient, account, deployment, keys, prove, relayerUrl, logChunk });
+  constructor({ publicClient, walletClient, account, deployment, keys, prove, relayerUrl = null, logChunk = 2_000_000n, relayRetryMs = 1500 }) {
+    Object.assign(this, { publicClient, walletClient, account, deployment, keys, prove, relayerUrl, logChunk, relayRetryMs });
     this.address = typeof account === "string" ? account : account.address;
     this.tree = new C.Tree();
     this.notes = [];
@@ -115,6 +115,21 @@ export class CellaClient {
     return this._send(this.deployment.registry, registryAbi, "register", [this.keys.pubKey, this.keys.encKey]);
   }
 
+  // ---------------- held payments ----------------
+
+  /** ETH the pool is holding for `address` because it could not be delivered when it was paid out. */
+  owed(address = this.address) {
+    return this.readPool("owed", [address]);
+  }
+  /** Collects what the pool holds for this wallet. Sent by the wallet itself. */
+  claim() {
+    return this._send(this.deployment.pool, poolAbi, "claim", []);
+  }
+  /** Amount of a withdrawal or fee in `receipt` that its payee did not accept, per payee. */
+  static heldIn(receipt) {
+    return parseEventLogs({ abi: poolAbi, logs: receipt.logs, eventName: "PaymentHeld" }).map((l) => ({ to: l.args.to, amount: l.args.amount }));
+  }
+
   // ---------------- relayer ----------------
 
   /** { address, fee } from the relayer, or null when none is set or it cannot be reached. */
@@ -130,9 +145,15 @@ export class CellaClient {
     }
   }
   async _relay(p, ext) {
-    const r = await fetch(this.relayerUrl + "/relay", { method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ proof: p, ext }, (_, v) => (typeof v === "bigint" ? v.toString() : v)) });
-    const out = await r.json();
+    const body = JSON.stringify({ proof: p, ext }, (_, v) => (typeof v === "bigint" ? v.toString() : v));
+    let r, out;
+    // 503 means the relayer could not reach the chain and sent nothing: worth a second and third try.
+    for (let attempt = 0; ; attempt++) {
+      r = await fetch(this.relayerUrl + "/relay", { method: "POST", headers: { "content-type": "application/json" }, body });
+      out = await r.json().catch(() => ({}));
+      if (r.status !== 503 || attempt >= 2) break;
+      await new Promise((ok) => setTimeout(ok, this.relayRetryMs * (attempt + 1)));
+    }
     if (!r.ok) throw new Error("The relayer refused: " + (out.error ?? r.status));
     const receipt = await this.publicClient.waitForTransactionReceipt({ hash: out.hash });
     if (receipt.status !== "success") throw new Error("The transaction was mined but failed.");

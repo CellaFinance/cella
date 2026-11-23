@@ -1,7 +1,7 @@
 // Cella relayer as a Node HTTP server. The rules live in core.mjs; this file
 // adds the socket, a queue so nonces never collide, and a per-address limit.
 import { createServer } from "node:http";
-import { makeRelayer, parseRequest, Refused, MAX_BODY } from "./core.mjs";
+import { makeRelayer, parseRequest, Refused, Unavailable, MAX_BODY } from "./core.mjs";
 
 export { parseRequest };
 
@@ -50,6 +50,7 @@ export function createRelayer({ allowOrigin = "*", perMinute = 20, log = () => {
       send(404, { error: "not found" });
     } catch (err) {
       if (err instanceof Refused) return send(400, { error: err.message });
+      if (err instanceof Unavailable) return send(503, { error: err.message });
       log("error " + (err.shortMessage ?? err.message));
       send(500, { error: "the relayer could not send this transaction" });
     }

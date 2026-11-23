@@ -172,3 +172,48 @@ test("no relayer, or one serving another pool: the client sends from the wallet 
   const receipt = await offline.withdraw(bobAcct.address, E("0.001"));
   assert.equal(getAddress(receipt.from), bobAcct.address);
 });
+
+test("when the RPC stumbles the relayer tries again, sends once, and says so plainly when it cannot", async () => {
+  await alice.deposit(E("0.02"));
+  const flaky = (target, method, failures, { after = false } = {}) => {
+    let left = failures;
+    return new Proxy(target, { get: (t, k) => (k !== method ? t[k] : async (...a) => {
+      // `after`: the call reaches the chain, but the answer is lost on the way back.
+      if (left > 0 && after) { left--; await t[k](...a); throw new Error("connection lost"); }
+      if (left > 0) { left--; throw new Error("fetch failed"); }
+      return t[k](...a);
+    }) });
+  };
+  const make = (pub, wallet) => createRelayer({ publicClient: pub, walletClient: wallet, account: relayerAcct, pool: deployment.pool,
+    chainId: deployment.chainId, perMinute: 1000, retryDelayMs: 5 });
+
+  // Two failed simulations, then one send whose answer is lost: still exactly one transaction.
+  const shaky = await clientFor(aliceAcct, await listen(make(flaky(net.pub, "simulateContract", 2), flaky(net.wallet, "sendRawTransaction", 1, { after: true }))));
+  const from = await net.pub.getBlockNumber({ cacheTime: 0 });
+  const nonce = await net.pub.getTransactionCount({ address: relayerAcct.address });
+  const to = randomAddress();
+  const receipt = await shaky.withdraw(to, E("0.004"));
+  assert.equal(getAddress(receipt.from), relayerAcct.address);
+  assert.equal(await ethOf(to), E("0.004"));
+  assert.equal(await net.pub.getTransactionCount({ address: relayerAcct.address }), nonce + 1);
+  assert.equal((await feesSince(from + 1n)).count, 1);
+
+  // An RPC that never answers: 503, a message that says nothing was sent, and nothing sent.
+  const dead = make(flaky(net.pub, "simulateContract", 1000), net.wallet);
+  const deadUrl = await listen(dead);
+  const down = await clientFor(aliceAcct, deadUrl);
+  down.relayRetryMs = 5;
+  const request = await capture(down, () => down.withdraw(randomAddress(), E("0.001")));
+  const answer = await post(request, deadUrl);
+  assert.equal(answer.status, 503);
+  assert.match((await answer.json()).error, /nothing was sent/);
+  await assert.rejects(down.withdraw(randomAddress(), E("0.001")), /did not answer/);
+  assert.equal(await net.pub.getTransactionCount({ address: relayerAcct.address }), nonce + 1);
+
+  // A real refusal by the pool is still a refusal, not something to retry.
+  const spent = await capture(shaky, () => shaky.withdraw(randomAddress(), E("0.001")));
+  await shaky.withdraw(randomAddress(), E("0.001"));
+  const again = await post(spent, shaky.relayerUrl);
+  assert.equal(again.status, 400);
+  assert.match((await again.json()).error, /pool would refuse/);
+});

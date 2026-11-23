@@ -9,7 +9,7 @@ import * as C from "../src/cella.mjs";
 import { deriveKeys } from "../src/keys.mjs";
 import { encryptNote, decryptNote, NOTE_BYTES } from "../src/notes.mjs";
 import { CellaClient } from "../src/client.mjs";
-import { ROOT, startChain, freshAccount, deployCella } from "../scripts/lib/local.mjs";
+import { ROOT, startChain, freshAccount, deployCella, deployContract, artifact } from "../scripts/lib/local.mjs";
 
 const WASM = join(ROOT, "build/transact_js/transact.wasm");
 const ZKEY = join(ROOT, "build/bench/g16.zkey");
@@ -120,4 +120,34 @@ test("an outsider syncing the same pool sees no balance and opens no note", asyn
 test("the pool holds exactly what the two balances add up to", async () => {
   await alice.sync(); await bob.sync();
   assert.equal(await alice.readPool("totalHeld"), alice.balance + bob.balance);
+});
+
+test("a withdrawal its recipient refuses is held for it, and the client can tell", async () => {
+  const REFUSER = artifact("Helpers", "Refuser");
+  const { address: refuser } = await deployContract(net, aliceAcct, REFUSER);
+  assert.equal(await alice.owed(refuser), 0n);
+  await alice.deposit(E("0.01"));
+  const before_ = alice.balance;
+
+  const receipt = await alice.withdraw(refuser, E("0.004"));
+  assert.deepEqual(CellaClient.heldIn(receipt).map((h) => [getAddress(h.to), h.amount]), [[getAddress(refuser), E("0.004")]]);
+  assert.equal(await alice.owed(refuser), E("0.004"));
+  assert.equal(alice.balance, before_ - E("0.004"));
+  assert.equal(await net.pub.getBalance({ address: refuser }), 0n);
+
+  // An ordinary withdrawal holds nothing, and a wallet that is owed nothing cannot claim.
+  const plain = await alice.withdraw(aliceAcct.address, E("0.001"));
+  assert.deepEqual(CellaClient.heldIn(plain), []);
+  assert.equal(await alice.owed(), 0n);
+  await assert.rejects(alice.claim(), /NothingOwed/);
+
+  // Once it accepts ETH, the recipient collects exactly what was held.
+  const call = async (fn, args) => {
+    const hash = await net.wallet.writeContract({ address: refuser, abi: REFUSER.abi, functionName: fn, args, account: aliceAcct, gas: 500_000n });
+    assert.equal((await net.pub.waitForTransactionReceipt({ hash })).status, "success");
+  };
+  await call("setAccepting", [true]);
+  await call("collect", [deployment.pool]);
+  assert.equal(await net.pub.getBalance({ address: refuser }), E("0.004"));
+  assert.equal(await alice.owed(refuser), 0n);
 });
