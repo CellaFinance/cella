@@ -2,14 +2,16 @@
 
 ## Robinhood Chain, mainnet (4663)
 
+Explorer: https://robinhoodchain.blockscout.com
+
 Beta, unaudited. Deposit limits: 0.1 ETH each, 5 ETH in total. Owner: `0xb7f1C2882BE91587CdDE97474297a992cb298478`.
 
 | Contract | Address |
 | --- | --- |
-| CellaPool | `0x6bfd78e6c3761b8a8e5ea216b39e64c82b9c76cd` |
-| CellaRegistry | `0x8d6cde1ff699de46543adc404ccdeb8a3b5b243d` |
-| Groth16VerifierMainnet | `0x6e654fb9f3af625c553ffcbd0f8f0963848c2090` |
-| Hasher | `0x85b67b781dee8792694a5038668a35ebb12c61fb` |
+| CellaPool | [`0x6bfd78e6c3761b8a8e5ea216b39e64c82b9c76cd`](https://robinhoodchain.blockscout.com/address/0x6bfd78e6c3761b8a8e5ea216b39e64c82b9c76cd) |
+| CellaRegistry | [`0x8d6cde1ff699de46543adc404ccdeb8a3b5b243d`](https://robinhoodchain.blockscout.com/address/0x8d6cde1ff699de46543adc404ccdeb8a3b5b243d) |
+| Groth16VerifierMainnet | [`0x6e654fb9f3af625c553ffcbd0f8f0963848c2090`](https://robinhoodchain.blockscout.com/address/0x6e654fb9f3af625c553ffcbd0f8f0963848c2090) |
+| Hasher | [`0x85b67b781dee8792694a5038668a35ebb12c61fb`](https://robinhoodchain.blockscout.com/address/0x85b67b781dee8792694a5038668a35ebb12c61fb) |
 
 Data file: `deployments/4663.json`. Website and app: https://cella.finance (also reachable at https://cella-mainnet.pages.dev)
 
@@ -19,7 +21,7 @@ Launched on Pons, on Robinhood Chain mainnet. Name and symbol `CELLA`, 18 decima
 
 | | Address |
 | --- | --- |
-| CELLA token | `0x25be09017fd4bb5391bf265eadc8ae12d814ab28` |
+| CELLA token | [`0x25be09017fd4bb5391bf265eadc8ae12d814ab28`](https://robinhoodchain.blockscout.com/token/0x25be09017fd4bb5391bf265eadc8ae12d814ab28) |
 
 Using Cella does not require the token. Always compare the full address with the one on https://cella.finance and on https://x.com/cellafinance.
 
@@ -29,10 +31,10 @@ Uses a local test proving key, not the ceremony key. Do not treat testnet as a s
 
 | Contract | Address |
 | --- | --- |
-| CellaPool | `0x48285350eb8890015b3fd28a30b99dc6c6584f2d` |
-| CellaRegistry | `0xc806318f49a41273f6f80e8451b4735080af4920` |
+| CellaPool | [`0x48285350eb8890015b3fd28a30b99dc6c6584f2d`](https://explorer.testnet.chain.robinhood.com/address/0x48285350eb8890015b3fd28a30b99dc6c6584f2d) |
+| CellaRegistry | [`0xc806318f49a41273f6f80e8451b4735080af4920`](https://explorer.testnet.chain.robinhood.com/address/0xc806318f49a41273f6f80e8451b4735080af4920) |
 | Groth16Verifier | `0x90e9e448558eeda6263071317140222247af7979` |
-| Hasher | `0xe431300949284e205fd3eb33d79ac685538e84ff` |
+| Hasher | [`0xe431300949284e205fd3eb33d79ac685538e84ff`](https://explorer.testnet.chain.robinhood.com/address/0xe431300949284e205fd3eb33d79ac685538e84ff) |
 
 Data file: `deployments/46630.json`. App: https://cella-br5.pages.dev. An earlier testnet pool is kept in `deployments/46630-v1.json`.
 

@@ -24,7 +24,7 @@ import { ROOT, artifact } from "./lib/local.mjs";
 const NETWORKS = {
   testnet: { chainId: 46630, name: "Robinhood Chain Testnet", rpc: "https://rpc.testnet.chain.robinhood.com", explorer: "https://explorer.testnet.chain.robinhood.com",
     verifier: "Groth16Verifier", key: "deployer" },
-  mainnet: { chainId: 4663, name: "Robinhood Chain", rpc: "https://rpc.mainnet.chain.robinhood.com", explorer: null,
+  mainnet: { chainId: 4663, name: "Robinhood Chain", rpc: "https://rpc.mainnet.chain.robinhood.com", explorer: "https://robinhoodchain.blockscout.com",
     verifier: "Groth16VerifierMainnet", key: "deployer-mainnet" },
 };
 const args = {};

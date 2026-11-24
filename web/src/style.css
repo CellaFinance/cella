@@ -77,6 +77,8 @@ button:disabled { opacity: 0.35; cursor: default; }
 #hint { min-height: 20px; margin: -8px 0 22px; }
 .status { min-height: 24px; margin: 16px 0 0; font-size: 14px; color: var(--muted); }
 .status.error { color: var(--warn); }
+.status a { color: var(--ink, #f0ede6); text-underline-offset: 3px; text-decoration-color: #4a4944; }
+.status a:hover { text-decoration-color: currentColor; }
 
 .sees { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; margin-top: 44px; padding-top: 28px; border-top: 1px solid var(--line); }
 .sees ul { margin: 0; padding: 0; list-style: none; font-size: 14px; }

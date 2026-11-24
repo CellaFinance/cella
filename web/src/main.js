@@ -42,9 +42,15 @@ const TABS = {
 
 const state = { tab: "deposit", busy: false, deployment: null, pub: null, wallet: null, account: null, address: null, client: null, rules: null };
 
-function setStatus(text, isError = false) {
-  $("status").textContent = text;
-  $("status").classList.toggle("error", isError);
+function setStatus(text, isError = false, txHash = null) {
+  const el = $("status");
+  el.textContent = text;
+  el.classList.toggle("error", isError);
+  // After a transaction, link it on the block explorer when the deployment names one.
+  const explorer = state.deployment?.explorer;
+  if (txHash && explorer && /^0x[0-9a-fA-F]{64}$/.test(txHash)) {
+    el.append(" ", Object.assign(document.createElement("a"), { href: `${explorer.replace(/\/$/, "")}/tx/${txHash}`, target: "_blank", rel: "noopener", textContent: "View transaction" }));
+  }
 }
 function fail(e) {
   console.error(e);
@@ -237,16 +243,16 @@ async function submit() {
   }
   if (tab === "deposit") {
     if (amount > state.rules.maxDeposit) return setStatus(`The limit is ${eth(state.rules.maxDeposit)} ETH per deposit.`, true);
-    await client.deposit(amount);
-    setStatus(`Deposited ${eth(amount)} ETH.`);
+    const receipt = await client.deposit(amount);
+    setStatus(`Deposited ${eth(amount)} ETH.`, false, receipt?.transactionHash);
   } else if (tab === "send") {
-    await client.transfer(getAddress(to), amount);
-    setStatus(`Sent ${eth(amount)} ETH privately to ${short(to)}.`);
+    const receipt = await client.transfer(getAddress(to), amount);
+    setStatus(`Sent ${eth(amount)} ETH privately to ${short(to)}.`, false, receipt?.transactionHash);
   } else {
     const receipt = await client.withdraw(getAddress(to), amount);
     const held = CellaClient.heldIn(receipt).some((h) => getAddress(h.to) === getAddress(to));
     setStatus(held ? `${short(to)} did not accept the ETH, so ${eth(amount)} ETH is waiting in Cella for that address to collect. It has left your private balance.`
-      : `Withdrew ${eth(amount)} ETH to ${short(to)}.`);
+      : `Withdrew ${eth(amount)} ETH to ${short(to)}.`, false, receipt?.transactionHash);
   }
   $("amount").value = "";
 }
