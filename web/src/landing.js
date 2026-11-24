@@ -57,6 +57,22 @@ const seen = new IntersectionObserver((entries) => {
 }, { rootMargin: "0px 0px -8% 0px" });
 for (const el of document.querySelectorAll(".reveal")) seen.observe(el);
 
+// CA: shown in full, one tap to copy.
+for (const box of document.querySelectorAll("[data-ca]")) {
+  const button = box.querySelector("[data-ca-copy]"), addr = box.querySelector("[data-ca-addr]");
+  button.addEventListener("click", async () => {
+    const text = addr.textContent.trim();
+    try { await navigator.clipboard.writeText(text); }
+    catch {
+      const range = document.createRange(); range.selectNodeContents(addr);
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range);
+      try { document.execCommand("copy"); } catch { /* the address stays selected for a manual copy */ }
+    }
+    button.textContent = "Copied";
+    setTimeout(() => { button.textContent = "Copy"; }, 1600);
+  });
+}
+
 // The page is written for mainnet. A copy of the site that points at a test network says so
 // and says so.
 fetch("/deployment.json", { cache: "no-store" }).then((r) => r.json()).then((d) => {

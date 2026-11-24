@@ -13,6 +13,16 @@ Beta, unaudited. Deposit limits: 0.1 ETH each, 5 ETH in total. Owner: `0xb7f1C28
 
 Data file: `deployments/4663.json`. Website and app: https://cella.finance (also reachable at https://cella-mainnet.pages.dev)
 
+## CELLA token
+
+Launched on Pons, on Robinhood Chain mainnet. Name and symbol `CELLA`, 18 decimals, total supply 1,000,000,000.
+
+| | Address |
+| --- | --- |
+| CELLA token | `0x25be09017fd4bb5391bf265eadc8ae12d814ab28` |
+
+Using Cella does not require the token. Always compare the full address with the one on https://cella.finance and on https://x.com/cellafinance.
+
 ## Robinhood Chain Testnet (46630)
 
 Uses a local test proving key, not the ceremony key. Do not treat testnet as a security reference.
