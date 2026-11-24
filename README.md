@@ -10,6 +10,9 @@ Cella is a shielded pool. You deposit ETH into one shared pool, pay other Cella 
 - Docs: https://cella.finance/docs/
 - X: https://x.com/cellafinance
 - App on testnet: https://cella-br5.pages.dev
+- CELLA token (launched on Pons, Robinhood Chain): `0x25be09017fd4bb5391bf265eadc8ae12d814ab28` ([explorer](https://robinhoodchain.blockscout.com/token/0x25be09017fd4bb5391bf265eadc8ae12d814ab28)). Using Cella does not require the token. Always check the full address.
+- Explorer: https://robinhoodchain.blockscout.com
+- [![CELLA on HEY Research Lab](https://heyresearch.xyz/api/badge/cella)](https://heyresearch.xyz/project/cella)
 
 ## How it works, in short
 
